@@ -120,14 +120,13 @@ void init_state(struct state *st)
 {
     state = st;
 }
-
+#include <assert.h>
 int goto_state(struct state *st)
 {
     struct state *prev = state;
-
     if (state && state->leave)
         state->leave(state, st, state->gui_id);
-
+//assert(0);
     state       = st;
     state_time  = 0;
     state_drawn = 0;

@@ -12,6 +12,11 @@
  * General Public License for more details.
  */
 
+#ifdef NXDK
+#include <hal/debug.h>
+#endif
+#include <assert.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -195,7 +200,7 @@ void fs_dir_free(Array items)
 }
 
 /*---------------------------------------------------------------------------*/
-
+#include <assert.h>
 static char *real_path(const char *path)
 {
     char *real = NULL;
@@ -227,6 +232,9 @@ fs_file fs_open_read(const char *path)
 
         if ((real = real_path(path)))
         {
+#ifdef NXDK
+debugPrint("Trying to open '%s' (read)\n", real);
+#endif
             fh->handle = fopen(real, "rb");
             free(real);
         }
@@ -252,6 +260,9 @@ static fs_file fs_open_write_flags(const char *path, int append)
 
             if ((real = path_join(fs_dir_write, path)))
             {
+#ifdef NXDK
+debugPrint("Trying to open '%s' (write)\n", real);
+#endif
                 fh->handle = fopen(real, append ? "ab" : "wb");
                 free(real);
             }

@@ -12,6 +12,10 @@
  * General Public License for more details.
  */
 
+#ifdef NXDK
+#include <hal/debug.h>
+#endif
+
 #ifndef _WIN32
 #include <dirent.h>
 #else
@@ -25,11 +29,16 @@
 #include "dir.h"
 #include "common.h"
 
+#ifdef NXDK
+#include <hal/debug.h>
+#include <_windows.h>
+#endif
+
 List dir_list_files(const char *path)
 {
     List files = NULL;
-
 #ifndef _WIN32
+assert(0);
     DIR *dir;
 
     if ((dir = opendir(path)))
@@ -47,6 +56,10 @@ List dir_list_files(const char *path)
         closedir(dir);
     }
 #else
+#ifndef NXDK
+    debugPrint("Asking for files in '%s'\n", path);
+#endif
+
     HANDLE hFind;
     WIN32_FIND_DATA FindFileData;
 
@@ -58,6 +71,10 @@ List dir_list_files(const char *path)
         {
             //FIXME: Handle wide strings?
             files = list_cons(strdup(FindFileData.cFileName), files);
+
+#ifndef NXDK
+            debugPrint("Found '%s'\n", FindFileData.cFileName);
+#endif
 
             FindNextFile(hFind, &FindFileData);
         }
@@ -141,6 +158,7 @@ void dir_free(Array items)
 int dir_exists(const char *path)
 {
 #ifndef _WIN32
+    assert(0);
     DIR *dir;
 
     if ((dir = opendir(path)))

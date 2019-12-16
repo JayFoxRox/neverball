@@ -12,6 +12,8 @@
  * General Public License for more details.
  */
 
+#include <assert.h>
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -215,11 +217,13 @@ printf("Tried to draw %d\n", RECT_ELEM);
 static void draw_text(int id)
 {
     glDrawArrays(GL_TRIANGLE_STRIP, id * WIDGET_VERT + RECT_VERT, TEXT_VERT);
+assert(0);
 }
 
 static void draw_image(int id)
 {
     glDrawArrays(GL_TRIANGLE_STRIP, id * WIDGET_VERT + RECT_VERT, IMAGE_VERT);
+assert(0);
 }
 
 static void draw_disable(void)
@@ -491,6 +495,8 @@ static void gui_theme_quit(void)
     theme_free(&curr_theme);
 }
 
+#include <assert.h>
+
 static void gui_theme_init(void)
 {
     gui_theme_quit();
@@ -516,11 +522,9 @@ void gui_init(void)
         borders[i] = padding;
 
     /* Initialize font rendering. */
-
     gui_font_init();
 
     /* Initialize GUI theme. */
-
     gui_theme_init();
 
     /* Initialize the VBOs. */
@@ -531,9 +535,11 @@ void gui_init(void)
     glBindBuffer_(GL_ARRAY_BUFFER, vert_vbo);
     glBufferData_(GL_ARRAY_BUFFER, sizeof (vert_buf), vert_buf, GL_STATIC_DRAW);
     glBindBuffer_(GL_ARRAY_BUFFER, 0);
-
+//assert(0);
     glGenBuffers_(1,                      &vert_ebo);
+//assert(0);
     glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, vert_ebo);
+//assert(0);
     glBufferData_(GL_ELEMENT_ARRAY_BUFFER,
                   WIDGET_MAX * WIDGET_ELEM * sizeof (GLushort),
                   NULL, GL_STATIC_DRAW);

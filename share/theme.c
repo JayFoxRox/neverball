@@ -86,7 +86,7 @@ static const char *theme_path(const char *name, const char *file)
     }
     return "";
 }
-
+#include <assert.h>
 int theme_load(struct theme *theme, const char *name)
 {
     char buff[MAXSTR];
@@ -101,7 +101,6 @@ int theme_load(struct theme *theme, const char *name)
         memset(theme, 0, sizeof (*theme));
 
         /* Load description. */
-
         if ((fp = fs_open_read(theme_path(name, "theme.txt"))))
         {
             while ((fs_gets(buff, sizeof (buff), fp)))

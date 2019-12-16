@@ -523,7 +523,7 @@ static void make_dirs_and_migrate(void)
 
     fs_mkdir("Screenshots");
 }
-
+#include <assert.h>
 /*---------------------------------------------------------------------------*/
 
 int main(int argc, char *argv[])
@@ -571,8 +571,10 @@ int main(int argc, char *argv[])
 
     /* Initialize video. */
 
-    if (!video_init())
+    if (!video_init()) {
+assert(0);
         return 1;
+}
 
     /* Material system. */
 
@@ -623,11 +625,14 @@ int main(int argc, char *argv[])
     /* Run the main game loop. */
 
     t0 = SDL_GetTicks();
-
+//assert(0);
     while (loop())
     {
+//debugPrint("%d > %d?\n", t1, t0);
+//assert(0);
         if ((t1 = SDL_GetTicks()) > t0)
         {
+//assert(0);
             /* Step the game state. */
 
             st_timer(0.001f * (t1 - t0));
@@ -637,7 +642,9 @@ int main(int argc, char *argv[])
             /* Render. */
 
             hmd_step();
+//assert(0);
             st_paint(0.001f * t0);
+//assert(0);
             video_swap();
 
             if (config_get_d(CONFIG_NICE))
@@ -653,7 +660,7 @@ int main(int argc, char *argv[])
     hmd_free();
     joy_quit();
     SDL_Quit();
-
+assert(0);
     return 0;
 }
 

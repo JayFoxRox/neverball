@@ -12,6 +12,11 @@
  * General Public License for more details.
  */
 
+#ifdef NXDK
+#include <hal/debug.h>
+#include <windows.h>
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -41,6 +46,11 @@ void log_printf(const char *fmt, ...)
         va_start(ap, fmt);
         vsnprintf(str, len, fmt, ap);
         va_end(ap);
+
+#ifdef NXDK
+debugPrint("%s\n", str);
+//Sleep(100);
+#endif
 
         fputs(str, stderr);
         fflush(stderr);

@@ -354,7 +354,7 @@ int  video_perf(void)
 {
     return fps;
 }
-
+#include <assert.h>
 void video_swap(void)
 {
     int dt;
@@ -365,9 +365,9 @@ void video_swap(void)
     /* Take a screenshot of the complete back buffer and swap it. */
 
     snapshot_take();
-
+//assert(0);
     SDL_GL_SwapWindow(window);
-
+//assert(0);
     /* Accumulate time passed and frames rendered. */
 
     dt = (int) SDL_GetTicks() - last;

@@ -160,6 +160,7 @@ const char *date_to_str(time_t i)
     return str;
 }
 
+#include <assert.h>
 int file_exists(const char *path)
 {
     return (access(path, F_OK) == 0);
