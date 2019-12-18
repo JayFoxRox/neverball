@@ -12,7 +12,11 @@
  * General Public License for more details.
  */
 
+#ifndef _WIN32
 #include <dirent.h>
+#else
+#include <windows.h>
+#endif
 
 #include <string.h>
 #include <stdlib.h>
@@ -21,16 +25,12 @@
 #include "dir.h"
 #include "common.h"
 
-/*
- * HACK: MinGW provides numerous POSIX extensions to MSVCRT, including
- * dirent.h, so parasti ever so lazily has not bothered to port the
- * code below to FindFirstFile et al.
- */
-
 List dir_list_files(const char *path)
 {
-    DIR *dir;
     List files = NULL;
+
+#ifndef _WIN32
+    DIR *dir;
 
     if ((dir = opendir(path)))
     {
@@ -46,6 +46,24 @@ List dir_list_files(const char *path)
 
         closedir(dir);
     }
+#else
+    HANDLE hFind;
+    WIN32_FIND_DATA FindFileData;
+
+    hFind = FindFirstFile(path, &FindFileData);
+    if (hFind != INVALID_HANDLE_VALUE)
+    {
+        BOOL status = TRUE;
+        while(status != FALSE)
+        {
+            //FIXME: Handle wide strings?
+            files = list_cons(strdup(FindFileData.cFileName), files);
+
+            FindNextFile(hFind, &FindFileData);
+        }
+        FindClose(hFind);
+    }
+#endif
 
     return files;
 }
