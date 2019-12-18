@@ -140,6 +140,7 @@ void dir_free(Array items)
 
 int dir_exists(const char *path)
 {
+#ifndef _WIN32
     DIR *dir;
 
     if ((dir = opendir(path)))
@@ -148,4 +149,10 @@ int dir_exists(const char *path)
         return 1;
     }
     return 0;
+#else
+    DWORD dwAttrib = GetFileAttributes(path);
+
+    return ((dwAttrib != INVALID_FILE_ATTRIBUTES) &&
+           (dwAttrib & FILE_ATTRIBUTE_DIRECTORY)) ? 1 : 0;
+#endif
 }
