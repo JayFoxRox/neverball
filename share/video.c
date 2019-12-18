@@ -154,6 +154,7 @@ int video_mode(int f, int w, int h)
         SDL_DestroyWindow(window);
     }
 
+#ifndef NXDK
 #if ENABLE_OPENGLES
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 1);
@@ -172,6 +173,7 @@ int video_mode(int f, int w, int h)
     SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE,    5);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE,  16);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+#endif
 
     /* Try to set the currently specified mode. */
 
