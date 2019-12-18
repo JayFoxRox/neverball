@@ -236,6 +236,12 @@ fs_file fs_open_read(const char *path)
 debugPrint("Trying to open '%s' (read)\n", real);
 #endif
             fh->handle = fopen(real, "rb");
+
+assert(fh->handle
+|| !strcmp(real, "./Neverball/neverballrc")
+|| !strcmp(real, "./Neverball/lang/.txt")
+);
+
             free(real);
         }
 
@@ -264,6 +270,12 @@ static fs_file fs_open_write_flags(const char *path, int append)
 debugPrint("Trying to open '%s' (write)\n", real);
 #endif
                 fh->handle = fopen(real, append ? "ab" : "wb");
+
+assert(fh->handle
+|| !strcmp(real, "./Neverball/neverball.log")
+|| !strcmp(real, "./Neverball/Replays/Last.nbr")
+);
+
                 free(real);
             }
 
