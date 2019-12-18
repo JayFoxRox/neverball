@@ -23,7 +23,9 @@
 #include "fs.h"
 
 #ifdef _WIN32
+#ifndef NXDK
 #include <shlobj.h>
+#endif
 #endif
 
 /*---------------------------------------------------------------------------*/
@@ -52,6 +54,7 @@ static const char *pick_data_path(const char *arg_data_path)
 static const char *pick_home_path(void)
 {
 #ifdef _WIN32
+#ifndef NXDK
     static char path[MAX_PATH];
 
     if (SHGetFolderPath(NULL, CSIDL_PERSONAL, NULL, 0, path) == S_OK)
@@ -68,6 +71,10 @@ static const char *pick_home_path(void)
     }
     else
         return fs_base_dir();
+#else
+    //FIXME: Xbox
+    return fs_base_dir();
+#endif
 #else
     const char *path;
 
