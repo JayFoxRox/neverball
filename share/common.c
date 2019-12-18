@@ -332,11 +332,14 @@ int rand_between(int low, int high)
 
 #ifdef _WIN32
 
+#ifndef NXDK
 /* MinGW hides this from ANSI C. MinGW-w64 doesn't. */
 _CRTIMP int _putenv(const char *envstring);
+#endif
 
 int set_env_var(const char *name, const char *value)
 {
+#ifndef NXDK
     if (name)
     {
         char str[MAXSTR];
@@ -348,6 +351,7 @@ int set_env_var(const char *name, const char *value)
 
         return (_putenv(str) == 0);
     }
+#endif
     return 0;
 }
 
