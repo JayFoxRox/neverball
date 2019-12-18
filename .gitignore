@@ -18,3 +18,10 @@
 /mapc.exe
 /contrib/curve.exe
 /*.dll
+
+*.obj
+/bin
+/main.exe
+/main.lib
+/*.iso
+/default.xbe

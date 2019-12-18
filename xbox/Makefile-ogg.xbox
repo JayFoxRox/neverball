@@ -1,0 +1,8 @@
+#OGG_DIR = $(NXDK_DIR)/lib/ogg
+OGG_DIR = $(CURDIR)/xbox/nxdk-ogg
+
+OGG_SRCS += $(wildcard $(OGG_DIR)/src/framing.c)
+OGG_SRCS += $(wildcard $(OGG_DIR)/src/bitwise.c)
+
+SRCS += $(OGG_SRCS)
+CFLAGS += -isystem $(OGG_DIR)/include

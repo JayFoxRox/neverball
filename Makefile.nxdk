@@ -1,0 +1,125 @@
+NXDK_DIR = $(CURDIR)/../XboxDev/nxdk
+
+XBE_TITLE = NeverballX
+OUTPUT_DIR = bin
+GEN_XISO = $(XBE_TITLE).iso
+
+CFLAGS =
+
+CFLAGS += -ferror-limit=0
+
+CFLAGS += -DENABLE_OPENGLES=1
+#CFLAGS += -DCONFIG_USER=\"$(USERDIR)\" \
+#CFLAGS += -DCONFIG_DATA=\"$(DATADIR)\" \
+#CFLAGS += -DCONFIG_LOCALE=\"$(LOCALEDIR)\"
+CFLAGS += -I$(CURDIR)/share/ -I$(CURDIR)/xbox/ -D_CRTIMP=
+
+BALL_SRCS := \
+	$(CURDIR)/share/lang.c        \
+	$(CURDIR)/share/st_common.c   \
+	$(CURDIR)/share/vec3.c        \
+	$(CURDIR)/share/base_image.c  \
+	$(CURDIR)/share/image.c       \
+	$(CURDIR)/share/solid_base.c  \
+	$(CURDIR)/share/solid_vary.c  \
+	$(CURDIR)/share/solid_draw.c  \
+	$(CURDIR)/share/solid_all.c   \
+	$(CURDIR)/share/mtrl.c        \
+	$(CURDIR)/share/part.c        \
+	$(CURDIR)/share/geom.c        \
+	$(CURDIR)/share/ball.c        \
+	$(CURDIR)/share/gui.c         \
+	$(CURDIR)/share/font.c        \
+	$(CURDIR)/share/theme.c       \
+	$(CURDIR)/share/base_config.c \
+	$(CURDIR)/share/config.c      \
+	$(CURDIR)/share/video.c       \
+	$(CURDIR)/share/glext.c       \
+	$(CURDIR)/share/binary.c      \
+	$(CURDIR)/share/state.c       \
+	$(CURDIR)/share/audio.c       \
+	$(CURDIR)/share/text.c        \
+	$(CURDIR)/share/common.c      \
+	$(CURDIR)/share/list.c        \
+	$(CURDIR)/share/queue.c       \
+	$(CURDIR)/share/cmd.c         \
+	$(CURDIR)/share/array.c       \
+	$(CURDIR)/share/dir.c         \
+	$(CURDIR)/share/fbo.c         \
+	$(CURDIR)/share/glsl.c        \
+	$(CURDIR)/share/fs_common.c   \
+	$(CURDIR)/share/fs_png.c      \
+	$(CURDIR)/share/fs_jpg.c      \
+	$(CURDIR)/share/fs_ov.c       \
+	$(CURDIR)/share/log.c         \
+	$(CURDIR)/share/joy.c         \
+	$(CURDIR)/ball/hud.c          \
+	$(CURDIR)/ball/game_common.c  \
+	$(CURDIR)/ball/game_client.c  \
+	$(CURDIR)/ball/game_server.c  \
+	$(CURDIR)/ball/game_proxy.c   \
+	$(CURDIR)/ball/game_draw.c    \
+	$(CURDIR)/ball/score.c        \
+	$(CURDIR)/ball/level.c        \
+	$(CURDIR)/ball/progress.c     \
+	$(CURDIR)/ball/set.c          \
+	$(CURDIR)/ball/demo.c         \
+	$(CURDIR)/ball/demo_dir.c     \
+	$(CURDIR)/ball/util.c         \
+	$(CURDIR)/ball/st_conf.c      \
+	$(CURDIR)/ball/st_demo.c      \
+	$(CURDIR)/ball/st_save.c      \
+	$(CURDIR)/ball/st_goal.c      \
+	$(CURDIR)/ball/st_fail.c      \
+	$(CURDIR)/ball/st_done.c      \
+	$(CURDIR)/ball/st_level.c     \
+	$(CURDIR)/ball/st_over.c      \
+	$(CURDIR)/ball/st_play.c      \
+	$(CURDIR)/ball/st_set.c       \
+	$(CURDIR)/ball/st_start.c     \
+	$(CURDIR)/ball/st_title.c     \
+	$(CURDIR)/ball/st_help.c      \
+	$(CURDIR)/ball/st_name.c      \
+	$(CURDIR)/ball/st_shared.c    \
+	$(CURDIR)/ball/st_pause.c     \
+	$(CURDIR)/ball/st_ball.c      \
+	$(CURDIR)/ball/main.c
+
+BALL_SRCS += share/solid_sim_sol.c
+BALL_SRCS += share/fs_stdio.c
+BALL_SRCS += share/tilt_null.c
+BALL_SRCS += share/hmd_null.c
+
+SRCS = $(BALL_SRCS) xbox/xbox.c
+#SHADER_OBJS = ps.inl vs.inl
+
+# Add SDL
+NXDK_SDL = y
+
+# Add vorbis and ogg
+include $(CURDIR)/xbox/Makefile-vorbis.xbox
+include $(CURDIR)/xbox/Makefile-ogg.xbox
+
+# Add libjpeg
+include $(CURDIR)/xbox/Makefile-libjpeg-turbo.xbox
+
+# Add libpng (depends on zlib)
+include $(CURDIR)/xbox/Makefile-zlib.xbox
+include $(CURDIR)/xbox/Makefile-libpng.xbox
+
+# XGU
+CFLAGS += -I$(CURDIR)/xbox/nxdk/lib
+
+all: $(OUTPUT_DIR)/default.xbe data $(GEN_XISO)
+
+# Add data to XISO
+#FIXME: Copy files to $(OUTPUT_DIR)
+data: force
+	@echo "Updating data"
+	@cp -r $(CURDIR)/data $(OUTPUT_DIR)/Neverball
+	@echo "Updating config"
+	@cp -r $(CURDIR)/xbox/neverballrc $(OUTPUT_DIR)/Neverball #FIXME: Buggy
+
+force:
+
+include $(NXDK_DIR)/Makefile

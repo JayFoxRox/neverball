@@ -1,0 +1,18 @@
+#ZLIB_DIR = $(NXDK_DIR)/lib/zlib
+ZLIB_DIR = $(CURDIR)/xbox/nxdk-zlib
+
+ZLIB_SRCS += $(wildcard $(ZLIB_DIR)/adler32.c)
+ZLIB_SRCS += $(wildcard $(ZLIB_DIR)/crc32.c)
+ZLIB_SRCS += $(wildcard $(ZLIB_DIR)/deflate.c)
+ZLIB_SRCS += $(wildcard $(ZLIB_DIR)/infback.c)
+ZLIB_SRCS += $(wildcard $(ZLIB_DIR)/inffast.c)
+ZLIB_SRCS += $(wildcard $(ZLIB_DIR)/inflate.c)
+ZLIB_SRCS += $(wildcard $(ZLIB_DIR)/inftrees.c)
+ZLIB_SRCS += $(wildcard $(ZLIB_DIR)/trees.c)
+ZLIB_SRCS += $(wildcard $(ZLIB_DIR)/zutil.c)
+
+#FIXME: gzip support
+
+SRCS += $(ZLIB_SRCS)
+CFLAGS += -isystem $(ZLIB_DIR) \
+          -DZ_SOLO
