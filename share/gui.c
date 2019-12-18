@@ -207,8 +207,9 @@ static void draw_enable(GLboolean c, GLboolean u, GLboolean p)
 
 static void draw_rect(int id)
 {
-    glDrawElements(GL_TRIANGLE_STRIP, RECT_ELEM, GL_UNSIGNED_SHORT,
-                   (const GLvoid *) (id * WIDGET_ELEM * sizeof (GLushort)));
+printf("Tried to draw %d\n", RECT_ELEM);
+ glDrawElements(GL_TRIANGLE_STRIP, RECT_ELEM, GL_UNSIGNED_SHORT,
+                (const GLvoid *) (id * WIDGET_ELEM * sizeof (GLushort)));
 }
 
 static void draw_text(int id)

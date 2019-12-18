@@ -424,8 +424,10 @@ void sol_draw_mesh(const struct d_mesh *mp, struct s_rend *rend, int p)
 
         if (rend->curr_mtrl.base.fl & M_PARTICLE)
             glDrawArrays(GL_POINTS, 0, mp->vbc);
-        else
-            glDrawElements(GL_TRIANGLES, mp->ebc, GL_UNSIGNED_SHORT, 0);
+        else {
+printf("Tried to draw %d (solid)\n", mp->ebc);
+           glDrawElements(GL_TRIANGLES, mp->ebc, GL_UNSIGNED_SHORT, 0);
+}
     }
 }
 
