@@ -319,7 +319,15 @@ static int scan_key_and_value(char **dst_key, char **dst_val, char *line)
         ke = -1;
         vs = -1;
 
-        sscanf(line, " %n%*s%n %n", &ks, &ke, &vs);
+#ifdef NXDK
+debugPrint("'%s'\n", line);
+char foo[1024];
+#endif
+        sscanf(line, " %n%*s%n %n", &ks,
+#ifdef NXDK
+&foo,
+#endif
+&ke, &vs);
 
         if (ks < 0 || ke < 0 || vs < 0)
             return 0;
