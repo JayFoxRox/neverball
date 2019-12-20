@@ -565,7 +565,7 @@ int main(int argc, char *argv[])
     lang_init();
 
     /* Initialize audio. */
-
+//assert(0);
     audio_init();
     tilt_init();
 
@@ -583,7 +583,7 @@ assert(0);
     /* Screen states. */
 
     init_state(&st_null);
-
+//assert(0);
     /* Initialize demo playback or load the level. */
 
     if (opt_replay &&

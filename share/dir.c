@@ -38,7 +38,6 @@ List dir_list_files(const char *path)
 {
     List files = NULL;
 #ifndef _WIN32
-assert(0);
     DIR *dir;
 
     if ((dir = opendir(path)))
@@ -158,7 +157,6 @@ void dir_free(Array items)
 int dir_exists(const char *path)
 {
 #ifndef _WIN32
-    assert(0);
     DIR *dir;
 
     if ((dir = opendir(path)))

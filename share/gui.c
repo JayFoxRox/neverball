@@ -217,7 +217,7 @@ printf("Tried to draw %d\n", RECT_ELEM);
 static void draw_text(int id)
 {
     glDrawArrays(GL_TRIANGLE_STRIP, id * WIDGET_VERT + RECT_VERT, TEXT_VERT);
-assert(0);
+//assert(0);
 }
 
 static void draw_image(int id)
@@ -771,6 +771,7 @@ void gui_set_image(int id, const char *file)
     glDeleteTextures(1, &widget[id].image);
 
     widget[id].image = make_image_from_file(file, IF_MIPMAP);
+assert(widget[id].image != 0);
 }
 
 void gui_set_label(int id, const char *text)
@@ -790,6 +791,7 @@ void gui_set_label(int id, const char *text)
                                             &widget[id].text_w,
                                             &widget[id].text_h,
                                             str, ttf, 0);
+assert(widget[id].image != 0);
     w = widget[id].text_w;
     h = widget[id].text_h;
 
@@ -917,6 +919,7 @@ int gui_image(int pd, const char *file, int w, int h)
     if ((id = gui_widget(pd, GUI_IMAGE)))
     {
         widget[id].image  = make_image_from_file(file, IF_MIPMAP);
+assert(widget[id].image != 0);
         widget[id].w      = w;
         widget[id].h      = h;
         widget[id].flags |= GUI_RECT;
@@ -948,6 +951,7 @@ int gui_state(int pd, const char *text, int size, int token, int value)
                                                 &widget[id].text_w,
                                                 &widget[id].text_h,
                                                 text, ttf, 0);
+assert(widget[id].image != 0);
         widget[id].w     = widget[id].text_w;
         widget[id].h     = widget[id].text_h;
         widget[id].size  = size;
@@ -965,11 +969,12 @@ int gui_label(int pd, const char *text, int size, const GLubyte *c0,
     if ((id = gui_widget(pd, GUI_LABEL)))
     {
         TTF_Font *ttf = fonts[widget[id].font].ttf[size];
-
+assert(ttf != NULL);
         widget[id].image = make_image_from_font(NULL, NULL,
                                                 &widget[id].text_w,
                                                 &widget[id].text_h,
                                                 text, ttf, 0);
+assert(widget[id].image != 0);
         widget[id].w      = widget[id].text_w;
         widget[id].h      = widget[id].text_h;
         widget[id].size   = size;
@@ -1674,8 +1679,10 @@ static void gui_paint_label(int id)
 {
     /* Short-circuit empty labels. */
 
-    if (widget[id].image == 0)
+    if (widget[id].image == 0) {
+        assert(0);
         return;
+    }
 
     /* Draw the widget text box, textured using the glyph. */
 

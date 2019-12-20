@@ -12,6 +12,8 @@
  * General Public License for more details.
  */
 
+#include <assert.h>
+
 #include <string.h>
 #include <stdlib.h>
 
@@ -46,6 +48,7 @@ int font_load(struct font *ft, const char *path, int sizes[3])
             return 1;
         }
     }
+assert(0);
     return 0;
 }
 
