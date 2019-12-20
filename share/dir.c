@@ -48,7 +48,7 @@ List dir_list_files(const char *path)
         {
             if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)
                 continue;
-
+printf("-- '%s'\n", ent->d_name);
             files = list_cons(strdup(ent->d_name), files);
         }
 
@@ -72,7 +72,7 @@ List dir_list_files(const char *path)
             files = list_cons(strdup(FindFileData.cFileName), files);
 
 #ifndef NXDK
-            debugPrint("Found '%s'\n", FindFileData.cFileName);
+            printf("-- '%s'\n", FindFileData.cFileName);
 #endif
 
             FindNextFile(hFind, &FindFileData);

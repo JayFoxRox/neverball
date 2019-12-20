@@ -210,8 +210,14 @@ static char *real_path(const char *path)
     {
         real = path_join(p->data, path);
 
-        if (file_exists(real))
+        if (file_exists(real)) {
+#ifdef NXDK
+debugPrint("found '%s'\n", real);
+#else
+printf("found '%s'\n", real);
+#endif
             break;
+        }
 
         free(real);
         real = NULL;
@@ -230,6 +236,9 @@ fs_file fs_open_read(const char *path)
     {
         char *real;
 
+#ifdef NXDK
+debugPrint("Path: %s\n", path);
+#endif
         if ((real = real_path(path)))
         {
 #ifdef NXDK
