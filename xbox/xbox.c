@@ -5,6 +5,30 @@
 #include <stdbool.h>
 #include <assert.h>
 
+#include <SDL.h>
+
+static unsigned int frame = 0; //FIXME: Remove
+static SDL_GameController* g = NULL;
+
+static void debugPrintFloat(float f) {
+#if 0
+  //FIXME: pdclib can't do this
+  debugPrint("%f", f);
+#endif
+#if 0
+  debugPrint("0x%08X", *(uint32_t*)&f);
+#endif
+#if 1
+  bool sign = f < 0.0f;
+  if (sign) { f = -f; }
+  unsigned int value = (unsigned int)(f * 10000);
+  unsigned int mantissa = value % 10000;
+  value /= 10000;
+  debugPrint("%s%u.%04u", sign ? "-" : "", value, mantissa);
+#endif
+}
+
+
 static void _unimplemented(const char* fmt, ...) {
   char buf[1024];
   va_list va;
@@ -117,6 +141,15 @@ int gettimeofday(struct timeval *tv, struct timezone *tz) {
 #include "GLES/gl.h"
 //#include <xgu/xgu.h>
 
+
+static void* AllocateResourceMemory(size_t size) {
+#define MAXRAM 0x03FFAFFF
+  return MmAllocateContiguousMemoryEx(size, 0, MAXRAM, 0, PAGE_READWRITE | PAGE_WRITECOMBINE);
+}
+
+static void FreeResourceMemory(void* ptr) {
+  MmFreeContiguousMemory(ptr);
+}
 
 typedef struct {
   void* data;
@@ -367,8 +400,8 @@ static XguFrontFace gl_to_xgu_front_face(GLenum mode) {
 
 static XguVertexArrayType gl_to_xgu_vertex_array_type(GLenum mode) {
   switch(mode) {
-  case GL_FLOAT: return XGU_FLOAT;
-  case GL_SHORT: return NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_S32K; //FIXME: NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_S1; for normals?
+  case GL_FLOAT:         return XGU_FLOAT;
+  case GL_SHORT:         return NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_S32K; //FIXME: NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_S1; for normals?
   case GL_UNSIGNED_BYTE: return NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_UB_OGL; //FIXME XGU_U8_XYZW ?
   default:
     unimplemented("%d", mode);
@@ -496,22 +529,22 @@ static bool is_texenv_src_inverted(TexEnv* t,  int texture, bool rgb, int arg) {
 
 static uint32_t* setup_texenv_src(uint32_t* p,
                                   TexEnv* t, unsigned int texture, unsigned int stage, bool rgb,
-                                  unsigned int x_a, bool a_alpha, bool a_invert,
-                                  unsigned int x_b, bool b_alpha, bool b_invert,
-                                  unsigned int x_c, bool c_alpha, bool c_invert,
-                                  unsigned int x_d, bool d_alpha, bool d_invert) {
+                                  unsigned int x_a, bool a_rgb, bool a_invert,
+                                  unsigned int x_b, bool b_rgb, bool b_invert,
+                                  unsigned int x_c, bool c_rgb, bool c_invert,
+                                  unsigned int x_d, bool d_rgb, bool d_invert) {
   if (rgb) {
     p = pb_push1(p, NV097_SET_COMBINER_COLOR_ICW + stage * 4,
-          MASK(NV097_SET_COMBINER_COLOR_ICW_A_SOURCE, x_a) | MASK(NV097_SET_COMBINER_COLOR_ICW_A_ALPHA, a_alpha ? 1 : 0) | MASK(NV097_SET_COMBINER_COLOR_ICW_A_MAP, a_invert ? _RC_UNSIGNED_INVERT : _RC_UNSIGNED)
-        | MASK(NV097_SET_COMBINER_COLOR_ICW_B_SOURCE, x_b) | MASK(NV097_SET_COMBINER_COLOR_ICW_B_ALPHA, b_alpha ? 1 : 0) | MASK(NV097_SET_COMBINER_COLOR_ICW_B_MAP, b_invert ? _RC_UNSIGNED_INVERT : _RC_UNSIGNED)
-        | MASK(NV097_SET_COMBINER_COLOR_ICW_C_SOURCE, x_c) | MASK(NV097_SET_COMBINER_COLOR_ICW_C_ALPHA, c_alpha ? 1 : 0) | MASK(NV097_SET_COMBINER_COLOR_ICW_C_MAP, c_invert ? _RC_UNSIGNED_INVERT : _RC_UNSIGNED)
-        | MASK(NV097_SET_COMBINER_COLOR_ICW_D_SOURCE, x_d) | MASK(NV097_SET_COMBINER_COLOR_ICW_D_ALPHA, d_alpha ? 1 : 0) | MASK(NV097_SET_COMBINER_COLOR_ICW_D_MAP, d_invert ? _RC_UNSIGNED_INVERT : _RC_UNSIGNED));
+          MASK(NV097_SET_COMBINER_COLOR_ICW_A_SOURCE, x_a) | MASK(NV097_SET_COMBINER_COLOR_ICW_A_ALPHA, a_rgb ? 0 : 1) | MASK(NV097_SET_COMBINER_COLOR_ICW_A_MAP, a_invert ? _RC_UNSIGNED_INVERT : _RC_UNSIGNED)
+        | MASK(NV097_SET_COMBINER_COLOR_ICW_B_SOURCE, x_b) | MASK(NV097_SET_COMBINER_COLOR_ICW_B_ALPHA, b_rgb ? 0 : 1) | MASK(NV097_SET_COMBINER_COLOR_ICW_B_MAP, b_invert ? _RC_UNSIGNED_INVERT : _RC_UNSIGNED)
+        | MASK(NV097_SET_COMBINER_COLOR_ICW_C_SOURCE, x_c) | MASK(NV097_SET_COMBINER_COLOR_ICW_C_ALPHA, c_rgb ? 0 : 1) | MASK(NV097_SET_COMBINER_COLOR_ICW_C_MAP, c_invert ? _RC_UNSIGNED_INVERT : _RC_UNSIGNED)
+        | MASK(NV097_SET_COMBINER_COLOR_ICW_D_SOURCE, x_d) | MASK(NV097_SET_COMBINER_COLOR_ICW_D_ALPHA, d_rgb ? 0 : 1) | MASK(NV097_SET_COMBINER_COLOR_ICW_D_MAP, d_invert ? _RC_UNSIGNED_INVERT : _RC_UNSIGNED));
   } else {
     p = pb_push1(p, NV097_SET_COMBINER_ALPHA_ICW + stage * 4,
-          MASK(NV097_SET_COMBINER_ALPHA_ICW_A_SOURCE, x_a) | MASK(NV097_SET_COMBINER_ALPHA_ICW_A_ALPHA, a_alpha ? 1 : 0) | MASK(NV097_SET_COMBINER_ALPHA_ICW_A_MAP, a_invert ? _RC_UNSIGNED_INVERT : _RC_UNSIGNED)
-        | MASK(NV097_SET_COMBINER_ALPHA_ICW_B_SOURCE, x_b) | MASK(NV097_SET_COMBINER_ALPHA_ICW_B_ALPHA, b_alpha ? 1 : 0) | MASK(NV097_SET_COMBINER_ALPHA_ICW_B_MAP, b_invert ? _RC_UNSIGNED_INVERT : _RC_UNSIGNED)
-        | MASK(NV097_SET_COMBINER_ALPHA_ICW_C_SOURCE, x_c) | MASK(NV097_SET_COMBINER_ALPHA_ICW_C_ALPHA, c_alpha ? 1 : 0) | MASK(NV097_SET_COMBINER_ALPHA_ICW_C_MAP, c_invert ? _RC_UNSIGNED_INVERT : _RC_UNSIGNED)
-        | MASK(NV097_SET_COMBINER_ALPHA_ICW_D_SOURCE, x_d) | MASK(NV097_SET_COMBINER_ALPHA_ICW_D_ALPHA, d_alpha ? 1 : 0) | MASK(NV097_SET_COMBINER_ALPHA_ICW_D_MAP, d_invert ? _RC_UNSIGNED_INVERT : _RC_UNSIGNED));
+          MASK(NV097_SET_COMBINER_ALPHA_ICW_A_SOURCE, x_a) | MASK(NV097_SET_COMBINER_ALPHA_ICW_A_ALPHA, a_rgb ? 0 : 1) | MASK(NV097_SET_COMBINER_ALPHA_ICW_A_MAP, a_invert ? _RC_UNSIGNED_INVERT : _RC_UNSIGNED)
+        | MASK(NV097_SET_COMBINER_ALPHA_ICW_B_SOURCE, x_b) | MASK(NV097_SET_COMBINER_ALPHA_ICW_B_ALPHA, b_rgb ? 0 : 1) | MASK(NV097_SET_COMBINER_ALPHA_ICW_B_MAP, b_invert ? _RC_UNSIGNED_INVERT : _RC_UNSIGNED)
+        | MASK(NV097_SET_COMBINER_ALPHA_ICW_C_SOURCE, x_c) | MASK(NV097_SET_COMBINER_ALPHA_ICW_C_ALPHA, c_rgb ? 0 : 1) | MASK(NV097_SET_COMBINER_ALPHA_ICW_C_MAP, c_invert ? _RC_UNSIGNED_INVERT : _RC_UNSIGNED)
+        | MASK(NV097_SET_COMBINER_ALPHA_ICW_D_SOURCE, x_d) | MASK(NV097_SET_COMBINER_ALPHA_ICW_D_ALPHA, d_rgb ? 0 : 1) | MASK(NV097_SET_COMBINER_ALPHA_ICW_D_MAP, d_invert ? _RC_UNSIGNED_INVERT : _RC_UNSIGNED));
   }
   return p;
 }
@@ -716,6 +749,7 @@ static void setup_texenv() {
   pb_end(p);
 }
 
+
 static GLuint gl_array_buffer = 0;
 static GLuint gl_element_array_buffer = 0;
 
@@ -768,6 +802,44 @@ typedef struct {
 static ClipPlane clip_planes[3]; //FIXME: No more needed for neverball
 
 
+static void print_attrib(XguVertexArray array, Attrib* attrib, unsigned int start, unsigned int count, bool submit) {
+  unsigned int end = start + count;
+  if (!attrib->array.enabled) {
+    debugPrint("\narray %d disabled\n", array, attrib->array.stride, attrib->array.data);
+    return;
+  }
+  if (attrib->array.gl_type == GL_SHORT) {
+    debugPrint("\narray %d as GL_SHORT, stride %d at %p\n", array, attrib->array.stride, attrib->array.data);
+    for(int i = start; i < end; i++) {
+      int16_t* v = i * attrib->array.stride + (uintptr_t)attrib->array.data;
+      debugPrint("[%d]:", i);
+      for(int j = 0; j < attrib->array.size; j++) {
+        debugPrint(" %d", (int)v[j]);
+      }
+      debugPrint("\n");
+      if (submit) {
+        assert(array == XGU_VERTEX_ARRAY);
+        assert(attrib->array.size == 2);
+        uint32_t* p = pb_begin();
+        p = xgu_vertex4f(p,  v[0], v[1], 1.0f, 1.0f);
+        pb_end(p);
+      }
+    }
+  } else if (attrib->array.gl_type == GL_FLOAT) {
+    debugPrint("\narray %d as GL_FLOAT, stride %d at %p\n", array, attrib->array.stride, attrib->array.data);
+    for(int i = start; i < end; i++) {
+      float* v = i * attrib->array.stride + (uintptr_t)attrib->array.data;
+      debugPrint("[%d]:", i);
+      for(int j = 0; j < attrib->array.size; j++) {
+        debugPrint(" ");
+        debugPrintFloat(v[j]);
+      }
+      debugPrint("\n");
+      assert(!submit);
+    }
+  }
+}
+
 static void setup_attrib(XguVertexArray array, Attrib* attrib) {
   if (!attrib->array.enabled) {
     uint32_t* p = pb_begin();
@@ -778,6 +850,7 @@ static void setup_attrib(XguVertexArray array, Attrib* attrib) {
     return;
   }
   assert(attrib->array.size > 0);
+  assert(attrib->array.stride > 0);
   xgux_set_attrib_pointer(array, gl_to_xgu_vertex_array_type(attrib->array.gl_type), attrib->array.size, attrib->array.stride, attrib->array.data);
 }
 
@@ -790,10 +863,10 @@ static bool is_texture_complete(Texture* tx) {
 
 static unsigned int gl_to_xgu_texture_format(GLenum internalformat) {
   switch(internalformat) {
-  case GL_LUMINANCE:       return NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y8;
-  case GL_LUMINANCE_ALPHA: return NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_AY8;
-  case GL_RGB:             return NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X8R8G8B8;
-  case GL_RGBA:            return NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8R8G8B8;
+  case GL_LUMINANCE:       return XGU_TEXTURE_FORMAT_Y8;
+  case GL_LUMINANCE_ALPHA: return XGU_TEXTURE_FORMAT_A8Y8;
+  case GL_RGB:             return XGU_TEXTURE_FORMAT_X8R8G8B8;
+  case GL_RGBA:            return XGU_TEXTURE_FORMAT_A8R8G8B8;
   default:
     unimplemented("%d", internalformat);
     assert(false);
@@ -846,13 +919,17 @@ static void setup_textures() {
         const ClipPlane* clip_plane = &clip_planes[clip_plane_index];
 
         // Set vertex attributes for the texture coordinates
+        //FIXME: This is wrong? It has to inherit the vertex position
+        //       Should be using texgen probably
         Attrib attrib = {
           .array = { .enabled = false },
           .value = { clip_plane->x, clip_plane->y, clip_plane->z, clip_plane->w }
         };
-        setup_attrib(XGU_TEXCOORD0_ARRAY+i, &attrib);
+        setup_attrib(9 /*FIXME: XGU_TEXCOORD0_ARRAY*/+i, &attrib);
 
         // Setup shader
+        //FIXME: Can use 4 clip planes per texture unit by using texture-matrix?
+        //FIXME: Also disable texture matrix?!
         unimplemented(); //FIXME: This should be NV097_SET_SHADER_STAGE_PROGRAM_STAGE0_CLIP_PLANE
         shaders[i] = NV097_SET_SHADER_STAGE_PROGRAM_STAGE0_PROGRAM_NONE;
 
@@ -885,6 +962,21 @@ static void setup_textures() {
     p = pb_push1(p,NV20_TCL_PRIMITIVE_3D_TX_ENABLE(i),0x4003ffc0); //set stage 0 texture enable flags
     unimplemented("Setup min and mag"); //FIXME: !!!
     p = pb_push1(p,NV20_TCL_PRIMITIVE_3D_TX_FILTER(i),0x04074000); //set stage 0 texture filters (AA!)
+
+    p = xgu_set_texgen_s(p, i, XGU_TEXGEN_DISABLE);
+    p = xgu_set_texgen_t(p, i, XGU_TEXGEN_DISABLE);
+    p = xgu_set_texgen_r(p, i, XGU_TEXGEN_DISABLE);
+    p = xgu_set_texgen_q(p, i, XGU_TEXGEN_DISABLE);
+    p = xgu_set_texture_matrix_enable(p, i, true);
+    //FIXME: Not hitting pixel centers yet!
+    const float m[4*4] = {
+      tx->width, 0.0f,       0.0f, 0.0f,
+      0.0f,      tx->height, 0.0f, 0.0f,
+      0.0f,      0.0f,       1.0f, 0.0f,
+      0.0f,      0.0f,       0.0f, 1.0f
+    };
+    p = xgu_set_texture_matrix(p, i, m);
+
     pb_end(p);
 
     // Setup texture shader
@@ -918,11 +1010,7 @@ static void setup_matrices() {
     //FIXME: p = xgu_set_normalization(p, false);
     //FIXME: p = xgu_set_lighting_enable(p, false);
 
-    for(int i = 0; i < XGU_TEXTURE_COUNT; i++) {
-        //FIXME: p = xgu_set_texgen(p, XGU_TEXGEN_OFF);
-      //p = xgu_set_texture_matrix_enable(p, i, false); // FIXME: Set these to matrix_t[i]
-      //uint32_t* xgu_set_texture_matrix(uint32_t* p, uint32_t slot, const float m[4*4]) {
-    }
+
 
     pb_end(p);
 
@@ -939,41 +1027,137 @@ static void setup_matrices() {
     const float* matrix_p_now = &matrix_p[matrix_p_slot * 4*4];
     const float* matrix_mv_now = &matrix_mv[matrix_mv_slot * 4*4];
 
+#if 0
   for(int i = 0; i < 4*4; i++) {
     debugPrint("%d %d [%d]\n", matrix_p_slot, matrix_mv_slot, i);
     assert(!isinf(matrix_p_now[i]));
     assert(!isinf(matrix_mv_now[i]));
   }
+#endif
+
+#define PRINT_MATRIX(_m) \
+  { \
+    const float* __m = _m; \
+    for(int i = 0; i < 4; i++) { \
+      for(int j = 0; j < 4; j++) { \
+        debugPrint(" "); \
+        debugPrintFloat(__m[i*4+j]); \
+        assert(!isinf(__m[i*4+j])); \
+      } \
+      debugPrint("\n"); \
+    } \
+  }
+
+debugPrint("\ndraw:\n");
+  PRINT_MATRIX(matrix_p_now);
 
 #if 1
   {
+    static float m[4*4];
+    memcpy(m, matrix_mv_now, sizeof(m));
+    matrix_mv_now = m;
+  } {
     static float m[4*4];
     memcpy(m, matrix_p_now, sizeof(m));
     matrix_p_now = m;
   }
 
+
+
+
+
+
+float f = 6000.0f;
+
   if (true) {
     float m[4*4];
     matrix_identity(m);
-    _math_matrix_scale(m, 1.0f/640.0f, 1.0f/480.0f, 1.0f);
+static float dx = 320.0f;
+static float dy = -240.0f;
+if (g != NULL) {
+  float xx = SDL_GameControllerGetAxis(g, SDL_CONTROLLER_AXIS_RIGHTX);
+  if (fabsf(xx) > 1000) { dx += xx/f; }
+  float xy = SDL_GameControllerGetAxis(g, SDL_CONTROLLER_AXIS_RIGHTY);
+  if (fabsf(xy) > 1000) { dy += xy/f; }
+}
+pb_print("%d %d scale\n", (int)(1000*dx), (int)(1000*dy));
+    _math_matrix_scale(m, dx, dy, -(float)0xFFFF);
     float t[4*4];
     memcpy(t, matrix_p_now, sizeof(t));
     matmul4(matrix_p_now, t, m);
   }
+
+
   if (true) {
     float m[4*4];
     matrix_identity(m);
-    _math_matrix_translate(m, 0.0f, 0.0f, 0.0f);
+static float dx = 0.0f;
+static float dy = -480.0f;
+if (g != NULL) {
+  float xx = SDL_GameControllerGetAxis(g, SDL_CONTROLLER_AXIS_LEFTX);
+  if (fabsf(xx) > 1000) { dx += xx/f; }
+  float xy = SDL_GameControllerGetAxis(g, SDL_CONTROLLER_AXIS_LEFTY);
+  if (fabsf(xy) > 1000) { dy += xy/f; }
+}
+pb_print("%d %d trans\n", (int)(1000*dx), (int)(1000*dy));
+    _math_matrix_translate(m, dx, dy, 0.0f);
     float t[4*4];
     memcpy(t, matrix_p_now, sizeof(t));
     matmul4(matrix_p_now, t, m);
   }
+
+
+
+//    matrix_identity(matrix_mv_now);
+    //matrix_identity(matrix_p_now);
+
+debugPrint("\ndraw (xbox):\n");
+  PRINT_MATRIX(matrix_p_now);
+
+//Sleep(100);
 #endif
+
+#if 0
+    float m_viewport[4*4] = {
+        0.5 * width/2.0f, 0.0f,         0.0f,          width/2.0f,
+        0.0f,       0.5*-height/2.0f, 0.0f,          height/2.0f,
+        0.0f,       0.0f,         (float)0x7FFF, 0x7FFF,
+        0.0f,       0.0f,         0.0f,          1.0f
+    };
+memcpy(matrix_mv_now, m_viewport, sizeof(m_viewport));
+memcpy(matrix_p_now, m_identity, sizeof(m_identity));
+#endif
+
+
+// Transpose
+#define TRANSPOSE(__m) \
+  { \
+    float* m_old = __m; \
+    float m_new[4*4]; \
+    for(int i = 0; i < 4; i++) { \
+      for(int j = 0; j < 4; j++) { \
+        m_new[i+4*j] = m_old[i*4+j]; \
+      } \
+    } \
+    memcpy(m_old, m_new, sizeof(m_new)); \
+  }
+TRANSPOSE(matrix_p_now)
+TRANSPOSE(matrix_mv_now)
 
 
   //FIXME: Could be wrong
   float matrix_c_now[4*4];
+bool flip = false;
+if (g != NULL) {
+  flip = SDL_GameControllerGetButton(g, SDL_CONTROLLER_BUTTON_BACK);
+}
+if (flip) {
+  matmul4(matrix_c_now, matrix_p_now, matrix_mv_now);
+pb_print("p*mv\n");
+} else {
   matmul4(matrix_c_now, matrix_mv_now, matrix_p_now);
+pb_print("mv*p\n");
+}
 
   for(int i = 0; i < 4*4; i++) {
     assert(!isinf(matrix_p_now[i]));
@@ -981,10 +1165,13 @@ static void setup_matrices() {
     assert(!isinf(matrix_c_now[i]));
   }
 
+
+#if 0
   for(int i = 0; i < XGU_WEIGHT_COUNT; i++) {
-    p = xgu_set_model_view_matrix(p, i, matrix_mv_now); //FIXME: Not sure when used?
+    p = xgu_set_model_view_matrix(p, i, m_identity); //FIXME: Not sure when used?
     p = xgu_set_inverse_model_view_matrix(p, i, m_identity); //FIXME: Not sure when used?
   }
+#endif
   
   
   /* Set up all states for hardware vertex pipeline */
@@ -1012,7 +1199,10 @@ static void prepare_drawing() {
   setup_attrib(XGU_VERTEX_ARRAY, &state.vertex_array);
   setup_attrib(XGU_COLOR_ARRAY, &state.color_array);
   setup_attrib(XGU_NORMAL_ARRAY, &state.normal_array);
-  setup_attrib(XGU_TEXCOORD0_ARRAY, &state.texture_coord_array[0]);
+  setup_attrib( 9 /*FIXME:XGU_TEXCOORD0_ARRAY*/, &state.texture_coord_array[0]);
+  setup_attrib(10 /*FIXME:XGU_TEXCOORD1_ARRAY*/, &state.texture_coord_array[1]);
+  setup_attrib(11 /*FIXME:XGU_TEXCOORD2_ARRAY*/, &state.texture_coord_array[2]);
+  setup_attrib(12 /*FIXME:XGU_TEXCOORD3_ARRAY*/, &state.texture_coord_array[3]);
 
   // Set up all matrices etc.
   setup_matrices();
@@ -1024,15 +1214,54 @@ static void prepare_drawing() {
   setup_texenv();
 
 #if 1
-  // Set some safe state
-  uint32_t* p = pb_begin();
-  p = xgu_set_cull_face_enable(p, false);
-  p = xgu_set_depth_test_enable(p, false);
-  p = xgu_set_lighting_enable(p, false);
+  {
+    // Set some safe state
+    uint32_t* p = pb_begin();
+    p = xgu_set_cull_face_enable(p, false);
+    p = xgu_set_depth_test_enable(p, false);
+    p = xgu_set_lighting_enable(p, false);
+    pb_end(p);
+  }
+#endif
 
-  p = xgu_set_alpha_test_enable(p, false);
-  p = xgu_set_blend_enable(p, false);
-  pb_end(p);
+#if 0
+  {
+    // Set some safe alpha state
+    uint32_t* p = pb_begin();
+    p = xgu_set_alpha_test_enable(p, false);
+    p = xgu_set_blend_enable(p, false);
+    pb_end(p);
+  }
+#endif
+
+#if 0
+  {
+    // Disco lighting
+    uint32_t* p = pb_begin();
+    // The following isn't 0, 0, 0 to avoid assert in XQEMU; anything with 0, x, 0 should work
+    p = xgu_set_vertex_data_array_format(p, XGU_COLOR_ARRAY, 1, 0, 0);
+    p = xgu_set_vertex_data4ub(p, XGU_COLOR_ARRAY, rand() & 0xFF, rand() & 0xFF, rand() & 0xFF, rand() & 0xFF);
+    pb_end(p);
+  }
+#endif
+
+#if 0
+  {
+    // Output selector
+    unsigned int source = _RC_TEXTURE+0;
+    uint32_t* p = pb_begin();
+    p = pb_push1(p, NV097_SET_COMBINER_SPECULAR_FOG_CW0,
+          MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW0_A_SOURCE, _RC_ZERO)   | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW0_A_ALPHA, 0) | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW0_A_INVERSE, 0)
+        | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW0_B_SOURCE, _RC_ZERO)   | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW0_B_ALPHA, 0) | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW0_B_INVERSE, 0)
+        | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW0_C_SOURCE, _RC_ZERO)   | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW0_C_ALPHA, 0) | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW0_C_INVERSE, 0)
+        | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW0_D_SOURCE, source) | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW0_D_ALPHA, 0) | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW0_D_INVERSE, 0));
+    p = pb_push1(p, NV097_SET_COMBINER_SPECULAR_FOG_CW1,
+          MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW1_E_SOURCE, _RC_ZERO)   | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW1_E_ALPHA, 0) | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW1_E_INVERSE, 0)
+        | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW1_F_SOURCE, _RC_ZERO)   | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW1_F_ALPHA, 0) | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW1_F_INVERSE, 0)
+        | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW1_G_SOURCE, source) | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW1_G_ALPHA, 1) | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW1_G_INVERSE, 0)
+        | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW1_SPECULAR_CLAMP, 0));
+    pb_end(p);
+  }
 #endif
 }
 
@@ -1136,10 +1365,10 @@ GL_API void GL_APIENTRY glBufferData (GLenum target, GLsizeiptr size, const void
   Buffer* buffer = objects[*get_bound_buffer_store(target)-1].data;
   if (buffer->data != NULL) {
     //FIXME: Re-use existing buffer if it's a good fit?
-    //FIXME: Assert that this memory is no longer used
-    MmFreeContiguousMemory(buffer->data);
+    assert(false); //FIXME: Assert that this memory is no longer used
+    FreeResourceMemory(buffer->data);
   }
-  buffer->data = MmAllocateContiguousMemory(size);
+  buffer->data = AllocateResourceMemory(size);
   buffer->size = size;
   assert(buffer->data != NULL);
   if (data != NULL) {
@@ -1155,6 +1384,7 @@ GL_API void GL_APIENTRY glBufferSubData (GLenum target, GLintptr offset, GLsizei
   assert(buffer->size >= (offset + size));
   assert(data != NULL);
   memcpy(&buffer->data[offset], data, size);
+debugPrint("Set %d bytes at %d in %p\n", size, offset, &buffer->data[offset]);
 }
 
 GL_API void GL_APIENTRY glDeleteBuffers (GLsizei n, const GLuint *buffers) {
@@ -1167,8 +1397,8 @@ GL_API void GL_APIENTRY glDeleteBuffers (GLsizei n, const GLuint *buffers) {
 
     Buffer* buffer = objects[buffers[i]-1].data;
     if (buffer->data != NULL) {
-      //FIXME: Assert that the data is no longer used
-      MmFreeContiguousMemory(buffer->data);
+      assert(false); //FIXME: Assert that the data is no longer used
+      FreeResourceMemory(buffer->data);
     }
   }
   del_objects(n, buffers);
@@ -1181,6 +1411,7 @@ static void store_attrib_pointer(Attrib* attrib, GLenum gl_type, unsigned int si
   } else {
     Buffer* buffer = objects[gl_array_buffer-1].data;
     base = (uintptr_t)buffer->data;
+    assert(base != 0);
   }
   attrib->array.gl_type = gl_type;
   attrib->array.size = size;
@@ -1205,14 +1436,79 @@ GL_API void GL_APIENTRY glVertexPointer (GLint size, GLenum type, GLsizei stride
   store_attrib_pointer(&state.vertex_array, type, size, stride, pointer);
 }
 
+static uint32_t* borders(uint32_t* p) {
+
+  p = xgu_begin(p, XGU_LINE_STRIP);
+  p = xgux_set_color3f(p, 1.0f, 0.0f, 0.0f);
+  p = xgu_vertex4f(p,  10,  10, 1.0f, 1.0f);
+  p = xgu_vertex4f(p,  10, 470, 1.0f, 1.0f);
+  p = xgu_vertex4f(p, 630, 470, 1.0f, 1.0f);
+  p = xgu_vertex4f(p, 630,  10, 1.0f, 1.0f);
+  p = xgu_vertex4f(p,  10,  10, 1.0f, 1.0f);
+  p = xgu_end(p);
+
+  p = xgu_begin(p, XGU_LINE_STRIP);
+  p = xgux_set_color3f(p, 0.0f, 0.0f, 1.0f);
+  p = xgu_vertex4f(p, -310, -230, 1.0f, 1.0f);
+  p = xgu_vertex4f(p, -310,  230, 1.0f, 1.0f);
+  p = xgu_vertex4f(p,  310,  230, 1.0f, 1.0f);
+  p = xgu_vertex4f(p,  310, -230, 1.0f, 1.0f);
+  p = xgu_vertex4f(p, -310, -230, 1.0f, 1.0f);
+  p = xgu_end(p);
+
+/*
+  p = xgu_begin(p, XGU_TRIANGLE_STRIP);
+  p = xgux_set_color3f(p, 1.0f, 1.0f, 1.0f);
+  for(int i = -1; i < 4; i++)
+  p = xgux_set_texcoord3f(p, i, 0.0f, 0.0f, 1.0f); p = xgu_vertex4f(p, -310, -230, 1.0f, 1.0f);
+  for(int i = -1; i < 4; i++)
+  p = xgux_set_texcoord3f(p, i, 32.0f, 0.0f, 1.0f); p = xgu_vertex4f(p,  310, -230, 1.0f, 1.0f);
+  for(int i = -1; i < 4; i++)
+  p = xgux_set_texcoord3f(p, i, 0.0f, 32.0f, 1.0f); p = xgu_vertex4f(p, -310,  230, 1.0f, 1.0f);
+  for(int i = -1; i < 4; i++)
+  p = xgux_set_texcoord3f(p, i, 32.0f, 32.0f, 1.0f); p = xgu_vertex4f(p,  310,  230, 1.0f, 1.0f);
+  p = xgu_end(p);
+*/
+
+  return p;
+}
+
 
 // Draw calls
 GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count) {
+
+  static unsigned int f = -1;
+  if (f == frame) {
+    //return;
+  }
+  f = frame;
+
   prepare_drawing();
   xgux_draw_arrays(gl_to_xgu_primitive_type(mode), first, count);
+#if 1
+  uint32_t* p = pb_begin();
+#if 0
+  p = xgu_begin(p, XGU_LINE_STRIP); //gl_to_xgu_primitive_type(mode));
+  pb_end(p);
+  print_attrib(XGU_VERTEX_ARRAY, &state.vertex_array, first, count, true);
+  p = pb_begin();
+  p = xgu_end(p);
+#endif
+p = borders(p);
+  pb_end(p);
+#endif
 }
 
 GL_API void GL_APIENTRY glDrawElements (GLenum mode, GLsizei count, GLenum type, const void *indices) {
+
+//return;
+
+  static unsigned int f = -1;
+  if (f == frame) {
+    //return;
+  }
+  f = frame;
+
   prepare_drawing();
 
   uintptr_t base;
@@ -1221,19 +1517,38 @@ GL_API void GL_APIENTRY glDrawElements (GLenum mode, GLsizei count, GLenum type,
   } else {
     Buffer* buffer = objects[gl_element_array_buffer-1].data;
     base = (uintptr_t)buffer->data;
+    assert(base != 0);
   }
 
   // This function only handles the 16 bit variant for now
   switch(type) {
   case GL_UNSIGNED_SHORT: {
-    xgux_draw_elements16(gl_to_xgu_primitive_type(mode), (const uint16_t*)(base + (uintptr_t)indices), count);
+    const uint16_t* indices_ptr = (const uint16_t*)(base + (uintptr_t)indices);
+    xgux_draw_elements16(gl_to_xgu_primitive_type(mode), indices_ptr, count);
+#if 1
+    uint32_t* p = pb_begin();
+#if 0
+    p = xgu_begin(p, XGU_LINE_STRIP); //gl_to_xgu_primitive_type(mode));
+    p = xgu_vertex3f(p, 0, 0, 1);
+    pb_end(p);
+    for(unsigned int i = 0; i < count; i++) {
+      print_attrib(XGU_VERTEX_ARRAY, &state.vertex_array, indices_ptr[i], 1, true); 
+    }
+    p = pb_begin();
+    p = xgu_end(p);
+#endif
+p = borders(p);
+    pb_end(p);
+#endif
     break;
   }
 #if 0
   //FIXME: Not declared in gl.h + untested
-  case GL_UNSIGNED_INT:
-    xgux_draw_elements32(gl_to_xgu_primitive_type(mode), (const uint32_t*)(base + (uintptr_t)indices), count);
+  case GL_UNSIGNED_INT: {
+    const uint32_t* indices_ptr = (const uint32_t*)(base + (uintptr_t)indices);
+    xgux_draw_elements32(gl_to_xgu_primitive_type(mode), indices_ptr, count);
     break;
+  }
 #endif
   default:
     unimplemented("%d", type);
@@ -1276,31 +1591,35 @@ GL_API void GL_APIENTRY glLoadIdentity (void) {
   matrix_identity(matrix);
 
   assert(!isinf(matrix[1]));
+
+debugPrint("\nident:\n");
+PRINT_MATRIX(matrix)
+
 }
 
 GL_API void GL_APIENTRY glMultMatrixf (const GLfloat *m) {
 
   //FIXME: Remove sanity checks
   for(int i = 0; i < 4*4; i++) {
-    debugPrint("0x%08X ", *(uint32_t*)&matrix[i]);
+//    debugPrint("0x%08X ", *(uint32_t*)&matrix[i]);
     assert(!isinf(matrix[i]));
   }
-  debugPrint("= x\n");
+//  debugPrint("= x\n");
   for(int i = 0; i < 4*4; i++) {
-    debugPrint("0x%08X ", *(uint32_t*)&m[i]);
+//    debugPrint("0x%08X ", *(uint32_t*)&m[i]);
     assert(!isinf(m[i]));
   }
-  debugPrint("= m\n");
+//  debugPrint("= m\n");
 
   float t[4 * 4];
   matmul4(t, matrix, m);
   memcpy(matrix, t, sizeof(t));
 
   for(int i = 0; i < 4*4; i++) {
-    debugPrint("0x%08X ", *(uint32_t*)&matrix[i]);
+//    debugPrint("0x%08X ", *(uint32_t*)&matrix[i]);
     assert(!isinf(matrix[i]));
   }
-  debugPrint("= r\n");
+//  debugPrint("= r\n");
   assert(!isinf(matrix[1]));
 }
 
@@ -1309,7 +1628,6 @@ GL_API void GL_APIENTRY glOrthof (GLfloat l, GLfloat r, GLfloat b, GLfloat t, GL
   ortho(m, l, r, b, t, n, f);
   assert(!isinf(m[0])); //FIXME: Remove sanity check
   glMultMatrixf(m);
-
   assert(!isinf(matrix[1])); //FIXME: Remove sanity check
 }
 
@@ -1317,6 +1635,15 @@ GL_API void GL_APIENTRY glTranslatef (GLfloat x, GLfloat y, GLfloat z) {
   float m[4*4];
   matrix_identity(m);
   _math_matrix_translate(m, x, y, z);
+
+#if 0
+debugPrint("\ntrans: ");
+debugPrintFloat(x); debugPrint(" ");
+debugPrintFloat(y); debugPrint(" ");
+debugPrintFloat(z); debugPrint("\n");
+PRINT_MATRIX(m);
+#endif
+
   assert(!isinf(m[0])); //FIXME: Remove sanity check
   glMultMatrixf(m);
 
@@ -1338,8 +1665,16 @@ GL_API void GL_APIENTRY glScalef (GLfloat x, GLfloat y, GLfloat z) {
   matrix_identity(m);
   _math_matrix_scale(m, x, y, z);
   assert(!isinf(m[0])); //FIXME: Remove sanity check
-  glMultMatrixf(m);
 
+#if 0
+debugPrint("\nscale: ");
+debugPrintFloat(x); debugPrint(" ");
+debugPrintFloat(y); debugPrint(" ");
+debugPrintFloat(z); debugPrint("\n");
+PRINT_MATRIX(m);
+#endif
+
+  glMultMatrixf(m);
   assert(!isinf(matrix[1])); //FIXME: Remove sanity check
 }
 
@@ -1454,9 +1789,9 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level, GLint internal
   if (tx->data != NULL) {
     //FIXME: Re-use existing buffer if it's a good fit?
     //FIXME: Assert that this memory is no longer used
-    MmFreeContiguousMemory(tx->data);
+    FreeResourceMemory(tx->data);
   }
-  tx->data = MmAllocateContiguousMemory(size);
+  tx->data = AllocateResourceMemory(size);
 
   // Copy pixels
   //FIXME: Respect GL pixel packing stuff
@@ -1832,6 +2167,38 @@ GL_API void GL_APIENTRY glPixelStorei (GLenum pname, GLint param) {
 #if 1
 EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers (EGLDisplay dpy, EGLSurface surface) {
 
+
+  frame++;
+
+#if 1
+  //FIXME: This doesn't work for some reason
+  static bool draw_debug = false;
+  SDL_GameControllerUpdate();
+  if (g == NULL) {
+    g = SDL_GameControllerOpen(0);
+    if (g == NULL) {
+      debugPrint("failed to open gamepad\n");
+      Sleep(100);
+    }
+  }
+  if (g != NULL) {
+    bool button = SDL_GameControllerGetButton(g, SDL_CONTROLLER_BUTTON_START);
+    if (button) {
+      draw_debug = !draw_debug;
+
+      if (draw_debug) {
+        pb_show_front_screen();
+      } else {
+        pb_show_debug_screen();
+      }
+
+      Sleep(200);
+    }
+  }
+#endif
+
+
+
   debugPrint("Going to swap buffers\n");
 
   /* Draw some text on the screen */
@@ -1871,7 +2238,6 @@ EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers (EGLDisplay dpy, EGLSurface surface
 
 
 
-//FIXME: Use stuff like `ptr = MmAllocateContiguousMemoryEx(size, 0, 0x3ffb000, 0, 0x404);` to alloc buffer / tex
 
 // Initialization
 
@@ -1930,6 +2296,39 @@ __attribute__((constructor)) static void setup_xbox(void) {
 #else
   pb_show_debug_screen();
 #endif
+
+
+#if 0
+  // GL self-test (might leak some memory)
+  GLuint b;
+  glGenBuffers(1, &b);
+  glBindBuffer(GL_ARRAY_BUFFER, b);
+  uint8_t data[] = {0,-1,-1,3,4,5,6,7,8};
+  glBufferData(GL_ARRAY_BUFFER, sizeof(data), data, 0);
+  uint8_t subdata[] = {1,2};
+  glBufferSubData(GL_ARRAY_BUFFER, 1, sizeof(subdata), subdata);
+  glEnableClientState(GL_VERTEX_ARRAY);
+  glVertexPointer(2, GL_SHORT, 4, (void*)0);
+  prepare_drawing();
+  Sleep(2000);
+#endif
+
+#if 1
+  debugPrintFloat(0.01f); debugPrint(" ");
+  debugPrintFloat(0.001f); debugPrint(" ");
+  debugPrintFloat(0.0001f); debugPrint(" ");
+  debugPrintFloat(1.0f); debugPrint(" ");
+  debugPrintFloat(-1.0f); debugPrint(" ");
+  debugPrintFloat(123.456f); debugPrint(" ");
+  debugPrintFloat(123.4f); debugPrint(" ");
+  debugPrintFloat(123.44444f); debugPrint(" ");
+  debugPrintFloat(123.45555f); debugPrint(" ");
+  debugPrint("\n");
+#endif
+
+  // Workaround for nxdk-sdl bug?
+  //FIXME: Why is this necessary?
+  SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
 
   //debugPrint("\n\n\n\n");
 
