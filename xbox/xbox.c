@@ -10,7 +10,7 @@
 static unsigned int frame = 0; //FIXME: Remove
 static SDL_GameController* g = NULL;
 
-static void debugPrintFloat(float f) {
+void debugPrintFloat(float f) {
 #if 0
   //FIXME: pdclib can't do this
   debugPrint("%f", f);
@@ -365,6 +365,21 @@ static XguPrimitiveType gl_to_xgu_primitive_type(GLenum mode) {
     return -1;
   }
 }
+
+#define XGU_TEXTURE_FILTER_LINEAR 4 //FIXME: Shitty workaround for XGU
+#define XGU_TEXTURE_FILTER_NEAREST XGU_TEXTURE_FILTER_LINEAR //FIXME: Shitty workaround for XGU
+
+static XguStencilOp gl_to_xgu_texture_filter(GLenum filter) {
+  switch(filter) {
+  case GL_LINEAR:  return XGU_TEXTURE_FILTER_LINEAR;
+  case GL_NEAREST: return XGU_TEXTURE_FILTER_NEAREST;
+  default:
+    unimplemented("%d", filter);
+    assert(false);
+    return -1;
+  }
+}
+
 
 static XguStencilOp gl_to_xgu_stencil_op(GLenum op) {
   switch(op) {
@@ -866,7 +881,7 @@ static unsigned int gl_to_xgu_texture_format(GLenum internalformat) {
   case GL_LUMINANCE:       return XGU_TEXTURE_FORMAT_Y8;
   case GL_LUMINANCE_ALPHA: return XGU_TEXTURE_FORMAT_A8Y8;
   case GL_RGB:             return XGU_TEXTURE_FORMAT_X8R8G8B8;
-  case GL_RGBA:            return XGU_TEXTURE_FORMAT_A8R8G8B8;
+  case GL_RGBA:            return XGU_TEXTURE_FORMAT_A8B8G8R8;
   default:
     unimplemented("%d", internalformat);
     assert(false);
@@ -901,9 +916,8 @@ static void setup_textures() {
 
       // Disable texture
       p = pb_begin();
-      p = pb_push1(p,NV20_TCL_PRIMITIVE_3D_TX_ENABLE(i),0x0003ffc0);//set stage 1 texture enable flags (bit30 disabled)
-      p = pb_push1(p,NV20_TCL_PRIMITIVE_3D_TX_WRAP(i),0x00030303);//set stage 1 texture modes (0x0W0V0U wrapping: 1=wrap 2=mirror 3=clamp 4=border 5=clamp to edge)
-      p = pb_push1(p,NV20_TCL_PRIMITIVE_3D_TX_FILTER(i),0x02022000);//set stage 1 texture filters (no AA, stage not even used)
+      p = xgu_set_texture_control0(p, i, false, 0, 0);
+      //FIXME: pbkit also sets wrap/addressing and filter stuff for disabled textures?!
       pb_end(p);
 
       // Find the next used clip plane
@@ -953,28 +967,51 @@ static void setup_textures() {
     // Setup texture
     shaders[i] = NV097_SET_SHADER_STAGE_PROGRAM_STAGE0_2D_PROJECTIVE;
     p = pb_begin();
+
+    //FIXME: I'd rather have XGU_TEXTURE_2D and XGU_TEXTURE_CUBEMAP for these
+    bool cubemap_enable = false;
+    unsigned int dimensionality = 2;
+
+    unsigned int context_dma = 0; //FIXME: Which one did pbkit use?
+    bool border = false;
+    p = xgu_set_texture_offset(p, i, (uintptr_t)tx->data & 0x03ffffff);
+    p = xgu_set_texture_format(p, i, context_dma, cubemap_enable, border, dimensionality,
+                                     gl_to_xgu_texture_format(tx->internal_base_format), 1,
+                                     0,0,0);
+    unimplemented("Setup wrap"); //FIXME: !!!
+    p = xgu_set_texture_address(p, i, 0x00030303); //FIXME: Shitty workaround for XGU
+    p = xgu_set_texture_control0(p, i, true, 0, 0);
+    p = xgu_set_texture_control1(p, i, tx->pitch);
+    p = xgu_set_texture_filter(p, i, 0, gl_to_xgu_texture_filter(tx->min_filter),
+                                        gl_to_xgu_texture_filter(tx->mag_filter),
+                                        false, false, false, false);
+    p = xgu_set_texture_image_rect(p, i, tx->width, tx->height);
+
+#if 0
     //FIXME: Use NV097_SET_TEXTURE_FORMAT and friends
     p = pb_push2(p,NV20_TCL_PRIMITIVE_3D_TX_OFFSET(i), (uintptr_t)tx->data & 0x03ffffff, 0x0001002A | (gl_to_xgu_texture_format(tx->internal_base_format) << 8)); //set stage 0 texture address & format
     p = pb_push1(p,NV20_TCL_PRIMITIVE_3D_TX_NPOT_PITCH(i), tx->pitch<<16); //set stage 0 texture pitch (pitch<<16)
     p = pb_push1(p,NV20_TCL_PRIMITIVE_3D_TX_NPOT_SIZE(i), (tx->width<<16) | tx->height); //set stage 0 texture width & height ((witdh<<16)|height)
-    unimplemented("Setup wrap"); //FIXME: !!!
+
     p = pb_push1(p,NV20_TCL_PRIMITIVE_3D_TX_WRAP(i),0x00030303);//set stage 0 texture modes (0x0W0V0U wrapping: 1=wrap 2=mirror 3=clamp 4=border 5=clamp to edge)
     p = pb_push1(p,NV20_TCL_PRIMITIVE_3D_TX_ENABLE(i),0x4003ffc0); //set stage 0 texture enable flags
-    unimplemented("Setup min and mag"); //FIXME: !!!
+
     p = pb_push1(p,NV20_TCL_PRIMITIVE_3D_TX_FILTER(i),0x04074000); //set stage 0 texture filters (AA!)
+#endif
 
     p = xgu_set_texgen_s(p, i, XGU_TEXGEN_DISABLE);
     p = xgu_set_texgen_t(p, i, XGU_TEXGEN_DISABLE);
     p = xgu_set_texgen_r(p, i, XGU_TEXGEN_DISABLE);
     p = xgu_set_texgen_q(p, i, XGU_TEXGEN_DISABLE);
     p = xgu_set_texture_matrix_enable(p, i, true);
-    //FIXME: Not hitting pixel centers yet!
+    unimplemented(); //FIXME: Not hitting pixel centers yet!
     const float m[4*4] = {
       tx->width, 0.0f,       0.0f, 0.0f,
       0.0f,      tx->height, 0.0f, 0.0f,
       0.0f,      0.0f,       1.0f, 0.0f,
       0.0f,      0.0f,       0.0f, 1.0f
     };
+    unimplemented(); //FIXME: Also respect matrix_t
     p = xgu_set_texture_matrix(p, i, m);
 
     pb_end(p);
@@ -1027,29 +1064,35 @@ static void setup_matrices() {
     const float* matrix_p_now = &matrix_p[matrix_p_slot * 4*4];
     const float* matrix_mv_now = &matrix_mv[matrix_mv_slot * 4*4];
 
-#if 0
-  for(int i = 0; i < 4*4; i++) {
-    debugPrint("%d %d [%d]\n", matrix_p_slot, matrix_mv_slot, i);
-    assert(!isinf(matrix_p_now[i]));
-    assert(!isinf(matrix_mv_now[i]));
-  }
-#endif
 
 #define PRINT_MATRIX(_m) \
-  { \
+  if (0) { \
     const float* __m = _m; \
     for(int i = 0; i < 4; i++) { \
       for(int j = 0; j < 4; j++) { \
         debugPrint(" "); \
         debugPrintFloat(__m[i*4+j]); \
-        assert(!isinf(__m[i*4+j])); \
       } \
       debugPrint("\n"); \
     } \
+    CHECK_MATRIX(__m); \
   }
 
+#define CHECK_MATRIX(_mc) \
+  if (1) { \
+    /*debugPrint(":%d (%s)\n", __LINE__, __FUNCTION__); */ \
+    const float* __mc = _mc; \
+    for(int i = 0; i < 4; i++) { \
+      for(int j = 0; j < 4; j++) { \
+        assert(!isinf(__mc[i*4+j])); \
+      } \
+    } \
+  }
+
+#if 0
 debugPrint("\ndraw:\n");
   PRINT_MATRIX(matrix_p_now);
+#endif
 
 #if 1
   {
@@ -1074,6 +1117,7 @@ float f = 6000.0f;
     matrix_identity(m);
 static float dx = 320.0f;
 static float dy = -240.0f;
+#if 0
 if (g != NULL) {
   float xx = SDL_GameControllerGetAxis(g, SDL_CONTROLLER_AXIS_RIGHTX);
   if (fabsf(xx) > 1000) { dx += xx/f; }
@@ -1081,6 +1125,7 @@ if (g != NULL) {
   if (fabsf(xy) > 1000) { dy += xy/f; }
 }
 pb_print("%d %d scale\n", (int)(1000*dx), (int)(1000*dy));
+#endif
     _math_matrix_scale(m, dx, dy, -(float)0xFFFF);
     float t[4*4];
     memcpy(t, matrix_p_now, sizeof(t));
@@ -1093,6 +1138,7 @@ pb_print("%d %d scale\n", (int)(1000*dx), (int)(1000*dy));
     matrix_identity(m);
 static float dx = 0.0f;
 static float dy = -480.0f;
+#if 0
 if (g != NULL) {
   float xx = SDL_GameControllerGetAxis(g, SDL_CONTROLLER_AXIS_LEFTX);
   if (fabsf(xx) > 1000) { dx += xx/f; }
@@ -1100,6 +1146,7 @@ if (g != NULL) {
   if (fabsf(xy) > 1000) { dy += xy/f; }
 }
 pb_print("%d %d trans\n", (int)(1000*dx), (int)(1000*dy));
+#endif
     _math_matrix_translate(m, dx, dy, 0.0f);
     float t[4*4];
     memcpy(t, matrix_p_now, sizeof(t));
@@ -1111,8 +1158,10 @@ pb_print("%d %d trans\n", (int)(1000*dx), (int)(1000*dy));
 //    matrix_identity(matrix_mv_now);
     //matrix_identity(matrix_p_now);
 
+#if 0
 debugPrint("\ndraw (xbox):\n");
   PRINT_MATRIX(matrix_p_now);
+#endif
 
 //Sleep(100);
 #endif
@@ -1147,23 +1196,11 @@ TRANSPOSE(matrix_mv_now)
 
   //FIXME: Could be wrong
   float matrix_c_now[4*4];
-bool flip = false;
-if (g != NULL) {
-  flip = SDL_GameControllerGetButton(g, SDL_CONTROLLER_BUTTON_BACK);
-}
-if (flip) {
-  matmul4(matrix_c_now, matrix_p_now, matrix_mv_now);
-pb_print("p*mv\n");
-} else {
   matmul4(matrix_c_now, matrix_mv_now, matrix_p_now);
-pb_print("mv*p\n");
-}
 
-  for(int i = 0; i < 4*4; i++) {
-    assert(!isinf(matrix_p_now[i]));
-    assert(!isinf(matrix_mv_now[i]));
-    assert(!isinf(matrix_c_now[i]));
-  }
+  CHECK_MATRIX(matrix_p_now);
+  CHECK_MATRIX(matrix_mv_now);
+  CHECK_MATRIX(matrix_c_now);
 
 
 #if 0
@@ -1330,8 +1367,8 @@ GL_API void GL_APIENTRY glClear (GLbitfield mask) {
   int height = pb_back_buffer_height();
 
   //FIXME: Remove this hack!
-  pb_erase_depth_stencil_buffer(0, 0, width, height); //FIXME: Do in XGU
-  pb_fill(0, 0, width, height, 0x80808080); //FIXME: Do in XGU
+  pb_erase_depth_stencil_buffer(0, 0, width/2, height/4); //FIXME: Do in XGU
+  pb_fill(0, 0, width/2, height/4, 0x80808080); //FIXME: Do in XGU
 
 }
 
@@ -1397,7 +1434,7 @@ GL_API void GL_APIENTRY glDeleteBuffers (GLsizei n, const GLuint *buffers) {
 
     Buffer* buffer = objects[buffers[i]-1].data;
     if (buffer->data != NULL) {
-      assert(false); //FIXME: Assert that the data is no longer used
+      unimplemented(); //FIXME: Assert that the data is no longer used
       FreeResourceMemory(buffer->data);
     }
   }
@@ -1438,6 +1475,7 @@ GL_API void GL_APIENTRY glVertexPointer (GLint size, GLenum type, GLsizei stride
 
 static uint32_t* borders(uint32_t* p) {
 
+/*
   p = xgu_begin(p, XGU_LINE_STRIP);
   p = xgux_set_color3f(p, 1.0f, 0.0f, 0.0f);
   p = xgu_vertex4f(p,  10,  10, 1.0f, 1.0f);
@@ -1455,6 +1493,7 @@ static uint32_t* borders(uint32_t* p) {
   p = xgu_vertex4f(p,  310, -230, 1.0f, 1.0f);
   p = xgu_vertex4f(p, -310, -230, 1.0f, 1.0f);
   p = xgu_end(p);
+*/
 
 /*
   p = xgu_begin(p, XGU_TRIANGLE_STRIP);
@@ -1560,7 +1599,7 @@ p = borders(p);
 
 // Matrix functions
 GL_API void GL_APIENTRY glMatrixMode (GLenum mode) {
-  assert(!isinf(matrix[1])); //FIXME: Remove sanity check
+  CHECK_MATRIX(matrix);
 
   switch(mode) {
   case GL_PROJECTION:
@@ -1584,51 +1623,39 @@ GL_API void GL_APIENTRY glMatrixMode (GLenum mode) {
   // Go to the current slot
   matrix = &matrix[*matrix_slot * 4*4];
 
-  assert(!isinf(matrix[1])); //FIXME: Remove sanity check
+  CHECK_MATRIX(matrix);
 }
 
 GL_API void GL_APIENTRY glLoadIdentity (void) {
   matrix_identity(matrix);
 
-  assert(!isinf(matrix[1]));
-
-debugPrint("\nident:\n");
-PRINT_MATRIX(matrix)
-
+  CHECK_MATRIX(matrix);
 }
 
-GL_API void GL_APIENTRY glMultMatrixf (const GLfloat *m) {
+#undef glMultMatrixf
 
-  //FIXME: Remove sanity checks
-  for(int i = 0; i < 4*4; i++) {
-//    debugPrint("0x%08X ", *(uint32_t*)&matrix[i]);
-    assert(!isinf(matrix[i]));
-  }
-//  debugPrint("= x\n");
-  for(int i = 0; i < 4*4; i++) {
-//    debugPrint("0x%08X ", *(uint32_t*)&m[i]);
-    assert(!isinf(m[i]));
-  }
-//  debugPrint("= m\n");
+static void _glMultMatrixf (const GLfloat *m) {
+
+  CHECK_MATRIX(matrix);
+  PRINT_MATRIX(m);
 
   float t[4 * 4];
   matmul4(t, matrix, m);
   memcpy(matrix, t, sizeof(t));
 
-  for(int i = 0; i < 4*4; i++) {
-//    debugPrint("0x%08X ", *(uint32_t*)&matrix[i]);
-    assert(!isinf(matrix[i]));
-  }
-//  debugPrint("= r\n");
-  assert(!isinf(matrix[1]));
+  CHECK_MATRIX(matrix);
+}
+
+GL_API void GL_APIENTRY glMultMatrixf (const GLfloat *m) {
+  _glMultMatrixf(m);
 }
 
 GL_API void GL_APIENTRY glOrthof (GLfloat l, GLfloat r, GLfloat b, GLfloat t, GLfloat n, GLfloat f) {
   float m[4*4];
   ortho(m, l, r, b, t, n, f);
-  assert(!isinf(m[0])); //FIXME: Remove sanity check
-  glMultMatrixf(m);
-  assert(!isinf(matrix[1])); //FIXME: Remove sanity check
+  CHECK_MATRIX(m);
+  _glMultMatrixf(m);
+  CHECK_MATRIX(matrix);
 }
 
 GL_API void GL_APIENTRY glTranslatef (GLfloat x, GLfloat y, GLfloat z) {
@@ -1644,27 +1671,27 @@ debugPrintFloat(z); debugPrint("\n");
 PRINT_MATRIX(m);
 #endif
 
-  assert(!isinf(m[0])); //FIXME: Remove sanity check
-  glMultMatrixf(m);
+  CHECK_MATRIX(m);
+  _glMultMatrixf(m);
 
-  assert(!isinf(matrix[1])); //FIXME: Remove sanity check
+  CHECK_MATRIX(matrix);
 }
 
 GL_API void GL_APIENTRY glRotatef (GLfloat angle, GLfloat x, GLfloat y, GLfloat z) {
   float m[4*4];
   matrix_identity(m);
   _math_matrix_rotate(m, angle, x, y, z);
-  assert(!isinf(m[0])); //FIXME: Remove sanity check
-  glMultMatrixf(m);
+  CHECK_MATRIX(m);
+  _glMultMatrixf(m);
 
-  assert(!isinf(matrix[1])); //FIXME: Remove sanity check
+  CHECK_MATRIX(matrix);
 }
 
 GL_API void GL_APIENTRY glScalef (GLfloat x, GLfloat y, GLfloat z) {
   float m[4*4];
   matrix_identity(m);
   _math_matrix_scale(m, x, y, z);
-  assert(!isinf(m[0])); //FIXME: Remove sanity check
+  CHECK_MATRIX(m);
 
 #if 0
 debugPrint("\nscale: ");
@@ -1674,8 +1701,8 @@ debugPrintFloat(z); debugPrint("\n");
 PRINT_MATRIX(m);
 #endif
 
-  glMultMatrixf(m);
-  assert(!isinf(matrix[1])); //FIXME: Remove sanity check
+  _glMultMatrixf(m);
+  CHECK_MATRIX(matrix);
 }
 
 GL_API void GL_APIENTRY glPopMatrix (void) {
@@ -1683,11 +1710,11 @@ GL_API void GL_APIENTRY glPopMatrix (void) {
   matrix -= 4*4;
   *matrix_slot -= 1;
 
-  assert(!isinf(matrix[1])); //FIXME: Remove sanity check
+  CHECK_MATRIX(matrix);
 }
 
 GL_API void GL_APIENTRY glPushMatrix (void) {
-  assert(!isinf(matrix[1])); //FIXME: Remove sanity check
+  CHECK_MATRIX(matrix);
 
   float* new_matrix = matrix;
   new_matrix += 4*4;
@@ -1805,9 +1832,10 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level, GLint internal
     assert(tx->pitch == tx->width * 4);
     for(int y = 0; y < tx->height; y++) {
       for(int x = 0; x < tx->height; x++) {
-        dst[0] = src[0];
+        //FIXME: Can also use different texture format instead probably
+        dst[0] = src[2];
         dst[1] = src[1];
-        dst[2] = src[2];
+        dst[2] = src[0];
         dst[3] = 0xFF;
         dst += 4;
         src += 3;
@@ -2313,7 +2341,7 @@ __attribute__((constructor)) static void setup_xbox(void) {
   Sleep(2000);
 #endif
 
-#if 1
+#if 0
   debugPrintFloat(0.01f); debugPrint(" ");
   debugPrintFloat(0.001f); debugPrint(" ");
   debugPrintFloat(0.0001f); debugPrint(" ");
@@ -2330,7 +2358,12 @@ __attribute__((constructor)) static void setup_xbox(void) {
   //FIXME: Why is this necessary?
   SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
 
-  //debugPrint("\n\n\n\n");
+  debugPrint("\n\n\n\n");
+  debugPrint("\n\n\n\n");
+  debugPrint("\n\n\n\n");
+  debugPrint("\n\n\n\n");
+  debugPrint("\n\n\n\n");
+  debugPrint("\n\n\n\n");
 
   //FIXME: Bump GPU in right state?
 

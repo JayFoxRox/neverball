@@ -153,6 +153,7 @@ typedef unsigned int GLbitfield;
 
 #define GL_INTERPOLATE 10082
 #define GL_MODULATE 10083
+
 #define GL_NEAREST 10084
 
 #define GL_OPERAND0_ALPHA 10085
@@ -256,6 +257,7 @@ GL_API void GL_APIENTRY glDrawElements (GLenum mode, GLsizei count, GLenum type,
 GL_API void GL_APIENTRY glMatrixMode (GLenum mode);
 GL_API void GL_APIENTRY glLoadIdentity (void);
 GL_API void GL_APIENTRY glMultMatrixf (const GLfloat *m);
+//#define glMultMatrixf(m) { debugPrint("%s:%d\n", __FILE__, __LINE__); glMultMatrixf(m); }
 GL_API void GL_APIENTRY glOrthof (GLfloat l, GLfloat r, GLfloat b, GLfloat t, GLfloat n, GLfloat f);
 GL_API void GL_APIENTRY glTranslatef (GLfloat x, GLfloat y, GLfloat z);
 GL_API void GL_APIENTRY glRotatef (GLfloat angle, GLfloat x, GLfloat y, GLfloat z);
