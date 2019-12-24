@@ -1061,12 +1061,13 @@ static void setup_matrices() {
     // Update matrices
 
     //FIXME: Keep dirty bits
-    const float* matrix_p_now = &matrix_p[matrix_p_slot * 4*4];
+unimplemented(); //FIXME:    const
+float* matrix_p_now = &matrix_p[matrix_p_slot * 4*4];
     const float* matrix_mv_now = &matrix_mv[matrix_mv_slot * 4*4];
 
 
 #define PRINT_MATRIX(_m) \
-  if (0) { \
+  if (1) { \
     const float* __m = _m; \
     for(int i = 0; i < 4; i++) { \
       for(int j = 0; j < 4; j++) { \
@@ -1155,10 +1156,11 @@ pb_print("%d %d trans\n", (int)(1000*dx), (int)(1000*dy));
 
 
 
+
 //    matrix_identity(matrix_mv_now);
     //matrix_identity(matrix_p_now);
 
-#if 0
+#if 1
 debugPrint("\ndraw (xbox):\n");
   PRINT_MATRIX(matrix_p_now);
 #endif
@@ -1192,6 +1194,7 @@ memcpy(matrix_p_now, m_identity, sizeof(m_identity));
   }
 TRANSPOSE(matrix_p_now)
 TRANSPOSE(matrix_mv_now)
+
 
 
   //FIXME: Could be wrong
@@ -1647,7 +1650,13 @@ static void _glMultMatrixf (const GLfloat *m) {
 }
 
 GL_API void GL_APIENTRY glMultMatrixf (const GLfloat *m) {
-  _glMultMatrixf(m);
+
+  float t[4 * 4];
+  memcpy(t, m, sizeof(t));
+
+//TRANSPOSE(t);
+
+  _glMultMatrixf(t);
 }
 
 GL_API void GL_APIENTRY glOrthof (GLfloat l, GLfloat r, GLfloat b, GLfloat t, GLfloat n, GLfloat f) {
