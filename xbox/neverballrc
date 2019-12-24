@@ -10,7 +10,7 @@ multisample               8
 mipmap                    1
 aniso                     8
 background                1
-shadow                    1
+shadow                    0
 audio_buff                2048
 mouse_sense               300
 mouse_response            50
