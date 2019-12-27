@@ -83,10 +83,15 @@ void log_init(const char *name, const char *path)
         if ((log_fp = fs_open_append(path)))
         {
             /* Printed on first message. */
-
+#if 0
+#error this will crash probably
             sprintf(log_header, "%s - %s %s",
                     date_to_str(time(NULL)),
                     name, VERSION);
+#endif
+#ifdef NXDK
+debugPrint("log_init...\n");
+#endif
         }
         else
         {
