@@ -2,6 +2,40 @@
 // These might have come from https://github.com/intel/external-mesa/blob/master/src/mesa/math/m_matrix.c ?
 //FIXME: Verify that these are conforming to GL spec
 
+#include <assert.h>
+
+#ifndef NXDK
+#define debugPrint(...) printf(__VA_ARGS__)
+#define debugPrintFloat(f) printf("%.4f", f)
+#else
+#include <hal/debug.h>
+void debugPrintFloat(float);
+#endif
+
+#define PRINT_MATRIX(_m) \
+  if (1) { \
+    const float* __m = _m; \
+    for(int i = 0; i < 4; i++) { \
+      for(int j = 0; j < 4; j++) { \
+        debugPrint(" "); \
+        debugPrintFloat(__m[i*4+j]); \
+      } \
+      debugPrint("\n"); \
+    } \
+    CHECK_MATRIX(__m); \
+  }
+
+#define CHECK_MATRIX(_mc) \
+  if (1) { \
+    /*debugPrint(":%d (%s)\n", __LINE__, __FUNCTION__); */ \
+    const float* __mc = _mc; \
+    for(int i = 0; i < 4; i++) { \
+      for(int j = 0; j < 4; j++) { \
+        assert(!isinf(__mc[i*4+j])); \
+      } \
+    } \
+  }
+
 #define _USE_MATH_DEFINES
 #include <math.h>
 
@@ -29,7 +63,7 @@ static void _math_matrix_scale(GLfloat *m, GLfloat x, GLfloat y, GLfloat z ) {
 }
 
 
-bool invert(float invOut[16], const float m[16])
+static bool invert(float invOut[16], const float m[16])
 {
   float inv[16], det;
   int i;
@@ -177,7 +211,7 @@ static void matmul4( GLfloat *product, const GLfloat *a, const GLfloat *b )
 #undef B
 #undef P
 
-void ortho(float* r, GLdouble left, GLdouble right, GLdouble bottom, GLdouble top, GLdouble nearval, GLdouble farval) {
+static void ortho(float* r, GLdouble left, GLdouble right, GLdouble bottom, GLdouble top, GLdouble nearval, GLdouble farval) {
   //FIXME: Multiply this onto the existing stack - don't overwrite
 
   GLfloat m[16];
@@ -207,7 +241,7 @@ void ortho(float* r, GLdouble left, GLdouble right, GLdouble bottom, GLdouble to
   memcpy(r, m, sizeof(m));
 }
 
-void _math_matrix_rotate( GLfloat *m, GLfloat angle, GLfloat x, GLfloat y, GLfloat z )
+static void _math_matrix_rotate( GLfloat *m, GLfloat angle, GLfloat x, GLfloat y, GLfloat z )
 {
     GLfloat xx, yy, zz, xy, yz, zx, xs, ys, zs, one_c, s, c;
 

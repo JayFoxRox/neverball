@@ -805,7 +805,7 @@ static unsigned int matrix_t_slot[4] = { 0, 0, 0, 0 };
 //FIXME: This code assumes that matrix_mv_slot is 0
 static unsigned int* matrix_slot = &matrix_mv_slot;
 static float* matrix = &matrix_mv[0];
-
+static GLenum matrix_mode = GL_MODELVIEW;
 
 typedef struct {
   bool enabled;
@@ -836,7 +836,7 @@ static void print_attrib(XguVertexArray array, Attrib* attrib, unsigned int star
         assert(array == XGU_VERTEX_ARRAY);
         assert(attrib->array.size == 2);
         uint32_t* p = pb_begin();
-        p = xgu_vertex4f(p,  v[0], v[1], 1.0f, 1.0f);
+        p = xgu_vertex4f(p,  v[0], v[1], 0.0f, 1.0f);
         pb_end(p);
       }
     }
@@ -850,7 +850,18 @@ static void print_attrib(XguVertexArray array, Attrib* attrib, unsigned int star
         debugPrintFloat(v[j]);
       }
       debugPrint("\n");
-      assert(!submit);
+      if (submit) {
+        assert(array == XGU_VERTEX_ARRAY);
+        uint32_t* p = pb_begin();
+        if (attrib->array.size == 2){
+          p = xgu_vertex4f(p,  v[0], v[1], 0.0f, 1.0f);
+        } else if (attrib->array.size == 3){
+          p = xgu_vertex4f(p,  v[0], v[1], v[2], 1.0f);
+        } else {
+          assert(false);
+        }
+        pb_end(p);
+      }
     }
   }
 }
@@ -858,8 +869,8 @@ static void print_attrib(XguVertexArray array, Attrib* attrib, unsigned int star
 static void setup_attrib(XguVertexArray array, Attrib* attrib) {
   if (!attrib->array.enabled) {
     uint32_t* p = pb_begin();
-    // The following isn't 0, 0, 0 to avoid assert in XQEMU; anything with 0, x, 0 should work
-    p = xgu_set_vertex_data_array_format(p, array, 1, 0, 0);
+    //FIXME: Somehow XGU should check for XGU_FLOAT if size is 0? type=FLOAT + size=0 means disabled
+    p = xgu_set_vertex_data_array_format(p, array, XGU_FLOAT, 0, 0);
     p = xgu_set_vertex_data4f(p, array, attrib->value[0], attrib->value[1], attrib->value[2], attrib->value[3]);
     pb_end(p);
     return;
@@ -972,7 +983,7 @@ static void setup_textures() {
     bool cubemap_enable = false;
     unsigned int dimensionality = 2;
 
-    unsigned int context_dma = 0; //FIXME: Which one did pbkit use?
+    unsigned int context_dma = 2; //FIXME: Which one did pbkit use?
     bool border = false;
     p = xgu_set_texture_offset(p, i, (uintptr_t)tx->data & 0x03ffffff);
     p = xgu_set_texture_format(p, i, context_dma, cubemap_enable, border, dimensionality,
@@ -1066,30 +1077,6 @@ float* matrix_p_now = &matrix_p[matrix_p_slot * 4*4];
     const float* matrix_mv_now = &matrix_mv[matrix_mv_slot * 4*4];
 
 
-#define PRINT_MATRIX(_m) \
-  if (1) { \
-    const float* __m = _m; \
-    for(int i = 0; i < 4; i++) { \
-      for(int j = 0; j < 4; j++) { \
-        debugPrint(" "); \
-        debugPrintFloat(__m[i*4+j]); \
-      } \
-      debugPrint("\n"); \
-    } \
-    CHECK_MATRIX(__m); \
-  }
-
-#define CHECK_MATRIX(_mc) \
-  if (1) { \
-    /*debugPrint(":%d (%s)\n", __LINE__, __FUNCTION__); */ \
-    const float* __mc = _mc; \
-    for(int i = 0; i < 4; i++) { \
-      for(int j = 0; j < 4; j++) { \
-        assert(!isinf(__mc[i*4+j])); \
-      } \
-    } \
-  }
-
 #if 0
 debugPrint("\ndraw:\n");
   PRINT_MATRIX(matrix_p_now);
@@ -1127,7 +1114,7 @@ if (g != NULL) {
 }
 pb_print("%d %d scale\n", (int)(1000*dx), (int)(1000*dy));
 #endif
-    _math_matrix_scale(m, dx, dy, -(float)0xFFFF);
+    _math_matrix_scale(m, dx, dy, (float)0xFFFF);
     float t[4*4];
     memcpy(t, matrix_p_now, sizeof(t));
     matmul4(matrix_p_now, t, m);
@@ -1154,8 +1141,30 @@ pb_print("%d %d trans\n", (int)(1000*dx), (int)(1000*dy));
     matmul4(matrix_p_now, t, m);
   }
 
+#if 0
+matrix_p_now[4*3+0] = 0.0f;
+matrix_p_now[4*3+1] = 0.14f;
+matrix_p_now[4*3+2] = -0.99f;
+matrix_p_now[4*3+3] = 501.0f;
+#endif
 
-
+#if 0
+matrix_p_now[4*0+3] = 320.0f;
+matrix_p_now[4*1+3] = 240.0f;
+#endif
+#if 0
+matrix_p_now[4*2+0] = 10.0f;
+matrix_p_now[4*2+1] = 10.0f;
+matrix_p_now[4*2+3] = 0.0f;
+#endif
+#if 0
+matrix_p_now[4*3+0] = 10.0f;
+matrix_p_now[4*3+1] = 10.0f;
+matrix_p_now[4*3+2] = 0.0f;
+#endif
+#if 0
+matrix_p_now[4*3+3] = 10.0f;
+#endif
 
 //    matrix_identity(matrix_mv_now);
     //matrix_identity(matrix_p_now);
@@ -1170,13 +1179,28 @@ debugPrint("\ndraw (xbox):\n");
 
 #if 0
     float m_viewport[4*4] = {
-        0.5 * width/2.0f, 0.0f,         0.0f,          width/2.0f,
+        320.0f,   0.0f,   0.0f,   0.0f,
+        0.0f,   -240.0f,   0.0f,   0.0f,
+        0.0f,     0.0f, 0xFFFF,   0,
+        0.0f,    480.0f,   0,   1
+    };
+//memcpy(matrix_mv_now, m_viewport, sizeof(m_viewport));
+//memcpy(matrix_p_now, m_identity, sizeof(m_identity));
+
+matmul4(matrix_p_now,matrix_p_now,m_viewport);
+#endif
+
+#if 0
+    float m_viewport[4*4] = {
+        0.5 * width/2.0f, 0.0f,         0.0f,        width/2.0f,
         0.0f,       0.5*-height/2.0f, 0.0f,          height/2.0f,
         0.0f,       0.0f,         (float)0x7FFF, 0x7FFF,
         0.0f,       0.0f,         0.0f,          1.0f
     };
-memcpy(matrix_mv_now, m_viewport, sizeof(m_viewport));
-memcpy(matrix_p_now, m_identity, sizeof(m_identity));
+//memcpy(matrix_mv_now, m_viewport, sizeof(m_viewport));
+//memcpy(matrix_p_now, m_identity, sizeof(m_identity));
+
+matmul4(matrix_p_now,m_viewport,matrix_p_now);
 #endif
 
 
@@ -1236,6 +1260,13 @@ static void prepare_drawing() {
   //FIXME: This uses a mask: p = xgu_set_light_enable(p, );
 
   // Setup attributes
+#if 1
+  uint32_t* p = pb_begin();
+  for(int i = 0; i < 16; i++) {
+    p = xgu_set_vertex_data_array_format(p, i, XGU_FLOAT, 0, 0);
+  }
+  pb_end(p);
+#endif
   setup_attrib(XGU_VERTEX_ARRAY, &state.vertex_array);
   setup_attrib(XGU_COLOR_ARRAY, &state.color_array);
   setup_attrib(XGU_NORMAL_ARRAY, &state.normal_array);
@@ -1278,8 +1309,7 @@ static void prepare_drawing() {
   {
     // Disco lighting
     uint32_t* p = pb_begin();
-    // The following isn't 0, 0, 0 to avoid assert in XQEMU; anything with 0, x, 0 should work
-    p = xgu_set_vertex_data_array_format(p, XGU_COLOR_ARRAY, 1, 0, 0);
+    p = xgu_set_vertex_data_array_format(p, XGU_COLOR_ARRAY, XGU_FLOAT, 0, 0);
     p = xgu_set_vertex_data4ub(p, XGU_COLOR_ARRAY, rand() & 0xFF, rand() & 0xFF, rand() & 0xFF, rand() & 0xFF);
     pb_end(p);
   }
@@ -1309,8 +1339,6 @@ static void prepare_drawing() {
 
 
 
-
-
 GL_API void GL_APIENTRY glGetIntegerv (GLenum pname, GLint *data) {
   switch(pname) {
   case GL_MAX_TEXTURE_SIZE:
@@ -1319,12 +1347,31 @@ GL_API void GL_APIENTRY glGetIntegerv (GLenum pname, GLint *data) {
   case GL_MAX_TEXTURE_UNITS:
     data[0] = 4;
     break;
+  case GL_MATRIX_MODE:
+    data[0] = matrix_mode;
+    break;
   default:
     unimplemented("%d", pname);
     assert(false);
     break;
   }
 }
+
+GL_API void GL_APIENTRY glGetFloatv (GLenum pname, GLfloat *data) {
+  switch(pname) {
+  case GL_MODELVIEW_MATRIX:
+    memcpy(data, &matrix_mv[matrix_mv_slot * 16], 16 * sizeof(GLfloat));
+    break;
+  case GL_PROJECTION_MATRIX:
+    memcpy(data, &matrix_p[matrix_p_slot * 16], 16 * sizeof(GLfloat));
+    break;
+  default:
+    unimplemented("%d", pname);
+    assert(false);
+    break;
+  }
+}
+
 
 GL_API const GLubyte *GL_APIENTRY glGetString (GLenum name) {
   const char* result = "";
@@ -1370,8 +1417,8 @@ GL_API void GL_APIENTRY glClear (GLbitfield mask) {
   int height = pb_back_buffer_height();
 
   //FIXME: Remove this hack!
-  pb_erase_depth_stencil_buffer(0, 0, width/2, height/4); //FIXME: Do in XGU
-  pb_fill(0, 0, width/2, height/4, 0x80808080); //FIXME: Do in XGU
+  pb_erase_depth_stencil_buffer(0, 0, width, height); //FIXME: Do in XGU
+  pb_fill(0, 0, width, height, 0x80808080); //FIXME: Do in XGU
 
 }
 
@@ -1519,6 +1566,9 @@ static uint32_t* borders(uint32_t* p) {
 // Draw calls
 GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count) {
 
+unimplemented("disabled due to errors on physical hardware");
+return; //FIXME: !!!
+
   static unsigned int f = -1;
   if (f == frame) {
     //return;
@@ -1526,7 +1576,9 @@ GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count) {
   f = frame;
 
   prepare_drawing();
+
   xgux_draw_arrays(gl_to_xgu_primitive_type(mode), first, count);
+
 #if 1
   uint32_t* p = pb_begin();
 #if 0
@@ -1604,6 +1656,9 @@ p = borders(p);
 GL_API void GL_APIENTRY glMatrixMode (GLenum mode) {
   CHECK_MATRIX(matrix);
 
+  // Remember mode
+  matrix_mode = mode;
+
   switch(mode) {
   case GL_PROJECTION:
     matrix = &matrix_p[0];
@@ -1639,7 +1694,9 @@ GL_API void GL_APIENTRY glLoadIdentity (void) {
 
 static void _glMultMatrixf (const GLfloat *m) {
 
+debugPrint("_glMultMatrixf:\n");
   CHECK_MATRIX(matrix);
+//PRINT_MATRIX(matrix);
   PRINT_MATRIX(m);
 
   float t[4 * 4];
@@ -2367,13 +2424,14 @@ __attribute__((constructor)) static void setup_xbox(void) {
   //FIXME: Why is this necessary?
   SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
 
-  debugPrint("\n\n\n\n");
-  debugPrint("\n\n\n\n");
-  debugPrint("\n\n\n\n");
-  debugPrint("\n\n\n\n");
-  debugPrint("\n\n\n\n");
-  debugPrint("\n\n\n\n");
-
+  debugPrint("\n\n");
+  debugPrint("\n\n");
+  debugPrint("\n\n");
+  debugPrint("\n\n");
+  debugPrint("\n\n");
+  debugPrint("\n\n");
+  debugPrint("\n\n");
+  debugPrint("\n\n");
   //FIXME: Bump GPU in right state?
 
 }

@@ -181,6 +181,12 @@ typedef unsigned int GLbitfield;
 
 
 
+// Not used in neverball, only for debugging
+#define GL_MATRIX_MODE 30000
+#define GL_MODELVIEW_MATRIX 30001
+#define GL_PROJECTION_MATRIX 30002
+
+
 
 
 
@@ -320,3 +326,5 @@ GL_API void GL_APIENTRY glMaterialfv (GLenum face, GLenum pname, const GLfloat *
 // Pixel pushing
 GL_API void GL_APIENTRY glPixelStorei (GLenum pname, GLint param);
 
+// Not used in neverball, only for debugging
+GL_API void GL_APIENTRY glGetFloatv (GLenum pname, GLfloat *data);
