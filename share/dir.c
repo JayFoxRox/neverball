@@ -55,11 +55,11 @@ printf("-- '%s'\n", ent->d_name);
 #endif
 
     HANDLE hFind;
-    WIN32_FIND_DATA FindFileData;
+    WIN32_FIND_DATAA FindFileData;
 
     char buf[1024];
     sprintf(buf, "%s\\*", path);
-    hFind = FindFirstFile(buf, &FindFileData);
+    hFind = FindFirstFileA(buf, &FindFileData);
     if (hFind != INVALID_HANDLE_VALUE)
     {
         BOOL status = TRUE;
@@ -76,7 +76,7 @@ printf("-- '%s'\n", ent->d_name);
 #endif
 #endif
 
-            status = FindNextFile(hFind, &FindFileData);
+            status = FindNextFileA(hFind, &FindFileData);
         }
         FindClose(hFind);
     }
@@ -169,7 +169,7 @@ int dir_exists(const char *path)
 #else
     printf("Path '%s':", path);
     debugPrint("Path '%s':", path);
-    DWORD dwAttrib = GetFileAttributes(path);
+    DWORD dwAttrib = GetFileAttributesA(path);
     printf(" 0x%08X\n", path, dwAttrib);
     debugPrint(" 0x%08X\n", path, dwAttrib);
 
