@@ -218,7 +218,11 @@ int path_is_abs(const char *path)
 
 char *path_join(const char *head, const char *tail)
 {
+#ifdef _WIN32
+    return *head ? concat_string(head, "\\", tail, NULL) : strdup(tail);
+#else
     return *head ? concat_string(head, "/", tail, NULL) : strdup(tail);
+#endif
 }
 
 const char *path_last_sep(const char *path)
