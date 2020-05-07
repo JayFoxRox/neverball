@@ -266,7 +266,11 @@ char *path_normalize(char *path)
     char *sep = path;
 
     while ((sep = (char *) path_next_sep(sep)))
+#ifdef _WIN32
+        *sep++ = '\\';
+#else
         *sep++ = '/';
+#endif
 
     return path;
 }
@@ -315,7 +319,11 @@ const char *dir_name(const char *name)
         if ((sep = (char *) path_last_sep(buff)))
         {
             if (sep == buff)
+#ifdef _WIN32
+                return "\\";
+#else
                 return "/";
+#endif
 
             *sep = '\0';
 
