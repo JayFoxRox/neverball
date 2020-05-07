@@ -257,8 +257,8 @@ debugPrint("Trying to open '%s' (read)\n", real);
             fh->handle = fopen(real, "rb");
 
 assert(fh->handle
-|| !strcmp(real, "./Neverball/neverballrc")
-|| !strcmp(real, "./Neverball/lang/.txt")
+|| !strcmp(real, "D:\\Neverball\\neverballrc")
+|| !strcmp(real, "D:\\Neverball\\lang.txt")
 );
 
             free(real);
@@ -291,8 +291,8 @@ debugPrint("Trying to open '%s' (write)\n", real);
                 fh->handle = fopen(real, append ? "ab" : "wb");
 
 assert(fh->handle
-|| !strcmp(real, "./Neverball/neverball.log")
-|| !strcmp(real, "./Neverball/Replays/Last.nbr")
+|| !strcmp(real, "E:\\UDATA\\Neverball\\neverball.log")
+|| !strcmp(real, "E:\\UDATA\\Neverball\\Replays\\Last.nbr")
 );
 
                 free(real);
