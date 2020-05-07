@@ -29,10 +29,6 @@
 #include "dir.h"
 #include "common.h"
 
-#ifdef NXDK
-#include <hal/debug.h>
-#endif
-
 List dir_list_files(const char *path)
 {
     List files = NULL;
