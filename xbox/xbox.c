@@ -356,10 +356,11 @@ static XguPrimitiveType gl_to_xgu_primitive_type(GLenum mode) {
   }
 }
 
+typedef unsigned int XguTextureFilter;
 #define XGU_TEXTURE_FILTER_LINEAR 4 //FIXME: Shitty workaround for XGU
 #define XGU_TEXTURE_FILTER_NEAREST XGU_TEXTURE_FILTER_LINEAR //FIXME: Shitty workaround for XGU
 
-static XguStencilOp gl_to_xgu_texture_filter(GLenum filter) {
+static XguTextureFilter gl_to_xgu_texture_filter(GLenum filter) {
   switch(filter) {
   case GL_LINEAR:  return XGU_TEXTURE_FILTER_LINEAR;
   case GL_NEAREST: return XGU_TEXTURE_FILTER_NEAREST;
@@ -983,7 +984,8 @@ static void setup_textures() {
     p = xgu_set_texture_address(p, i, 0x00030303); //FIXME: Shitty workaround for XGU
     p = xgu_set_texture_control0(p, i, true, 0, 0);
     p = xgu_set_texture_control1(p, i, tx->pitch);
-    p = xgu_set_texture_filter(p, i, 0, gl_to_xgu_texture_filter(tx->min_filter),
+    p = xgu_set_texture_filter(p, i, 0, XGU_TEXTURE_CONVOLUTION_QUINCUNX,
+                                        gl_to_xgu_texture_filter(tx->min_filter),
                                         gl_to_xgu_texture_filter(tx->mag_filter),
                                         false, false, false, false);
     p = xgu_set_texture_image_rect(p, i, tx->width, tx->height);
