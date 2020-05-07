@@ -2346,7 +2346,8 @@ static NTAPI VOID shutdown_notification_routine (PHAL_SHUTDOWN_REGISTRATION Shut
 __attribute__((constructor)) static void setup_xbox(void) {
 
   // Open log file
-  freopen("log.txt", "wb", stdout);
+  freopen("D:\\log.txt", "wb", stdout);
+  printf("Log started\n");
 
   // Register shutdown routine to catch errors
   shutdown_registration.NotificationRoutine = shutdown_notification_routine;
