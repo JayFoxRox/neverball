@@ -57,7 +57,9 @@ printf("-- '%s'\n", ent->d_name);
     HANDLE hFind;
     WIN32_FIND_DATA FindFileData;
 
-    hFind = FindFirstFile(path, &FindFileData);
+    char buf[1024];
+    sprintf(buf, "%s\\*", path);
+    hFind = FindFirstFile(buf, &FindFileData);
     if (hFind != INVALID_HANDLE_VALUE)
     {
         BOOL status = TRUE;
