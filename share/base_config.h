@@ -30,12 +30,18 @@
 #define VERSION "unknown"
 #endif
 
+#ifdef _WIN32
+#define SEP "\\"
+#else
+#define SEP "/"
+#endif
+
 #ifndef CONFIG_DATA
-#define CONFIG_DATA   "./data"        /* Game data directory */
+#define CONFIG_DATA   "." SEP "data"        /* Game data directory */
 #endif
 
 #ifndef CONFIG_LOCALE
-#define CONFIG_LOCALE "./locale"      /* Game localisation */
+#define CONFIG_LOCALE "." SEP "locale"      /* Game localisation */
 #endif
 
 /* User config directory */

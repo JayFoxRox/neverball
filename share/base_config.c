@@ -45,7 +45,7 @@ static const char *pick_data_path(const char *arg_data_path)
         return CONFIG_DATA;
 
     SAFECPY(dir, fs_base_dir());
-    SAFECAT(dir, "/");
+    SAFECAT(dir, SEP);
     SAFECAT(dir, CONFIG_DATA);
 
     return dir;
@@ -103,7 +103,11 @@ void config_paths(const char *arg_data_path)
     /* User directory. */
 
     home = pick_home_path();
-    user = concat_string(home, "/", CONFIG_USER, NULL);
+#ifdef NXDK
+    user = concat_string("", "", CONFIG_USER, NULL);
+#else
+    user = concat_string(home, SEP, CONFIG_USER, NULL);
+#endif
 
     /* Set up directory for writing, create if needed. */
 

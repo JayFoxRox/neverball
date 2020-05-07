@@ -9,9 +9,9 @@ CFLAGS =
 CFLAGS += -ferror-limit=0
 
 CFLAGS += -DENABLE_OPENGLES=1
-#CFLAGS += -DCONFIG_USER=\"$(USERDIR)\" \
-#CFLAGS += -DCONFIG_DATA=\"$(DATADIR)\" \
-#CFLAGS += -DCONFIG_LOCALE=\"$(LOCALEDIR)\"
+CFLAGS += -DCONFIG_USER=\"E:\\\\UDATA\\\\Neverball\"
+CFLAGS += -DCONFIG_DATA=\"D:\\\\Neverball\\\\data\"
+CFLAGS += -DCONFIG_LOCALE=\"D:\\\\Neverball\\\\locale\"
 CFLAGS += -I$(CURDIR)/share/ -I$(CURDIR)/xbox/ -D_CRTIMP=
 
 BALL_SRCS := \
