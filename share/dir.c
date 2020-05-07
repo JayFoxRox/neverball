@@ -166,6 +166,7 @@ int dir_exists(const char *path)
     return 0;
 #else
     DWORD dwAttrib = GetFileAttributes(path);
+    debugPrint("Path '%s': 0x%08X\n", path, dwAttrib);
 
     return ((dwAttrib != INVALID_FILE_ATTRIBUTES) &&
            (dwAttrib & FILE_ATTRIBUTE_DIRECTORY)) ? 1 : 0;
