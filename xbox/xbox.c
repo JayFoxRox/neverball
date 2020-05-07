@@ -1233,7 +1233,7 @@ TRANSPOSE(matrix_mv_now)
   /* Set up all states for hardware vertex pipeline */
   //FIXME: Might need inverse or some additional transform
   p = pb_begin();
-  p = xgu_set_transform_execution_mode(p, XGU_FIXED, XGU_RANGE_MODE_USER);
+  p = xgu_set_transform_execution_mode(p, XGU_FIXED, XGU_RANGE_MODE_PRIVATE);
   //FIXME: p = xgu_set_fog_enable(p, false);
   p = xgu_set_projection_matrix(p, matrix_p_now); //FIXME: Unused in XQEMU
   p = xgu_set_composite_matrix(p, matrix_c_now); //FIXME: Always used in XQEMU?
