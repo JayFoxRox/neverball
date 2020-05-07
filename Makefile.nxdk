@@ -100,13 +100,6 @@ NXDK_SDL = y
 include $(CURDIR)/xbox/Makefile-vorbis.xbox
 include $(CURDIR)/xbox/Makefile-ogg.xbox
 
-# Add libjpeg
-include $(CURDIR)/xbox/Makefile-libjpeg-turbo.xbox
-
-# Add libpng (depends on zlib)
-include $(CURDIR)/xbox/Makefile-zlib.xbox
-include $(CURDIR)/xbox/Makefile-libpng.xbox
-
 # XGU
 CFLAGS += -idirafter$(CURDIR)/xbox/nxdk/lib
 

@@ -76,16 +76,6 @@ int closedir(DIR *__dirp) {
 }
 #endif
 
-// Some windows garbage
-
-#include <xboxkrnl/xboxkrnl.h>
-
-DWORD GetFileAttributesA(
-  LPCSTR lpFileName
-) {
-  debugPrint("GetFileAttributes '%s'\n", lpFileName);
-  return FILE_ATTRIBUTE_DIRECTORY;
-}
 
 // sys/stat.h
 #include "sys/stat.h"
