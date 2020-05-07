@@ -114,3 +114,7 @@ data: force
 force:
 
 include $(NXDK_DIR)/Makefile
+
+# nxdk workarounds
+NXDK_CFLAGS := $(CFLAGS) $(NXDK_CFLAGS)
+CFLAGS := -Wno-deprecated-declarations
