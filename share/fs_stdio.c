@@ -219,6 +219,7 @@ static char *real_path(const char *path)
     for (p = fs_path; p; p = p->next)
     {
         real = path_join(p->data, path);
+        path_normalize(real);
 
         if (file_exists(real)) {
 #ifdef NXDK
