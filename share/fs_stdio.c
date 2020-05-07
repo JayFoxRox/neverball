@@ -291,6 +291,8 @@ debugPrint("Trying to open '%s' (write)\n", real);
                 fh->handle = fopen(real, append ? "ab" : "wb");
 
 assert(fh->handle
+|| !strcmp(real, "D:\\Neverball\\neverball.log")
+|| !strcmp(real, "D:\\Neverball\\Replays\\Last.nbr")
 || !strcmp(real, "E:\\UDATA\\Neverball\\neverball.log")
 || !strcmp(real, "E:\\UDATA\\Neverball\\Replays\\Last.nbr")
 );
