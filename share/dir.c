@@ -50,7 +50,7 @@ printf("-- '%s'\n", ent->d_name);
         closedir(dir);
     }
 #else
-#ifndef NXDK
+#ifdef NXDK
     debugPrint("Asking for files in '%s'\n", path);
 #endif
 
@@ -68,9 +68,11 @@ printf("-- '%s'\n", ent->d_name);
 
 #ifndef NXDK
             printf("-- '%s'\n", FindFileData.cFileName);
+#else
+            debugPrint("-- '%s'\n", FindFileData.cFileName);
 #endif
 
-            FindNextFile(hFind, &FindFileData);
+            status = FindNextFile(hFind, &FindFileData);
         }
         FindClose(hFind);
     }
