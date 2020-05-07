@@ -22,6 +22,12 @@
 #include "array.h"
 #include "common.h"
 
+#ifdef NXDK
+#include <hal/debug.h>
+#else
+#define debugPrint(...)
+#endif
+
 /*
  * This file implements the high-level virtual file system layer
  * routines.
@@ -45,9 +51,10 @@ static void add_archives(const char *path)
 {
     Array archives;
     int i;
-
+debugPrint("scanning '%s'\n", path);
     if ((archives = dir_scan(path, is_archive, NULL, NULL)))
     {
+debugPrint("scanning '%s' ??\n", path);
         array_sort(archives, cmp_dir_items);
 
         for (i = 0; i < array_len(archives); i++)
@@ -55,6 +62,7 @@ static void add_archives(const char *path)
 
         dir_free(archives);
     }
+debugPrint("scanning '%s' !!\n", path);
 }
 
 int fs_add_path_with_archives(const char *path)

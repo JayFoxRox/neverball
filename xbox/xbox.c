@@ -2422,10 +2422,7 @@ __attribute__((constructor)) static void setup_xbox(void) {
   debugPrint("\n\n");
   debugPrint("\n\n");
   debugPrint("\n\n");
-  debugPrint("\n\n");
-  debugPrint("\n\n");
-  debugPrint("\n\n");
-  debugPrint("\n\n");
+
   //FIXME: Bump GPU in right state?
 
 }

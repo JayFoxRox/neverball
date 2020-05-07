@@ -107,15 +107,21 @@ int fs_add_path(const char *path)
 
 int fs_set_write_dir(const char *path)
 {
+debugPrint("%s:%d\n", __FILE__, __LINE__);
     if (dir_exists(path))
     {
+debugPrint("%s:%d\n", __FILE__, __LINE__);
         if (fs_dir_write)
         {
+debugPrint("%s:%d\n", __FILE__, __LINE__);
             free(fs_dir_write);
+debugPrint("%s:%d\n", __FILE__, __LINE__);
             fs_dir_write = NULL;
+debugPrint("%s:%d\n", __FILE__, __LINE__);
         }
-
+debugPrint("%s:%d\n", __FILE__, __LINE__);
         fs_dir_write = strdup(path);
+debugPrint("%s:%d\n", __FILE__, __LINE__);
         return 1;
     }
     return 0;
@@ -309,6 +315,9 @@ fs_file fs_open_write(const char *path)
 
 fs_file fs_open_append(const char *path)
 {
+#ifdef NXDK
+debugPrint("Trying to open '%s' (append)\n", path);
+#endif
     return fs_open_write_flags(path, 1);
 }
 

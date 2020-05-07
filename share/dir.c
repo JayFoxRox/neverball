@@ -66,10 +66,12 @@ printf("-- '%s'\n", ent->d_name);
             //FIXME: Handle wide strings?
             files = list_cons(strdup(FindFileData.cFileName), files);
 
+#if 0
 #ifndef NXDK
             printf("-- '%s'\n", FindFileData.cFileName);
 #else
             debugPrint("-- '%s'\n", FindFileData.cFileName);
+#endif
 #endif
 
             status = FindNextFile(hFind, &FindFileData);
@@ -164,6 +166,7 @@ int dir_exists(const char *path)
     return 0;
 #else
     DWORD dwAttrib = GetFileAttributes(path);
+    printf("Path '%s': 0x%08X\n", path, dwAttrib);
     debugPrint("Path '%s': 0x%08X\n", path, dwAttrib);
 
     return ((dwAttrib != INVALID_FILE_ATTRIBUTES) &&

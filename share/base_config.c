@@ -28,6 +28,12 @@
 #endif
 #endif
 
+#ifdef NXDK
+#include <hal/debug.h>
+#else
+#define debugPrint(...)
+#endif
+
 /*---------------------------------------------------------------------------*/
 
 static const char *pick_data_path(const char *arg_data_path)
@@ -95,14 +101,15 @@ void config_paths(const char *arg_data_path)
      */
 
     /* Data directory. */
-
+debugPrint("%s:%d\n", __FILE__, __LINE__);
     data = pick_data_path(arg_data_path);
-
+debugPrint("%s:%d\n", __FILE__, __LINE__);
     fs_add_path_with_archives(data);
-
+debugPrint("%s:%d\n", __FILE__, __LINE__);
     /* User directory. */
 
     home = pick_home_path();
+debugPrint("%s:%d\n", __FILE__, __LINE__);
 #ifdef NXDK
     user = concat_string("", "", CONFIG_USER, NULL);
 #else
@@ -110,32 +117,44 @@ void config_paths(const char *arg_data_path)
 #endif
 
     /* Set up directory for writing, create if needed. */
-
+debugPrint("%s:%d\n", __FILE__, __LINE__);
     if (!fs_set_write_dir(user))
     {
+debugPrint("%s:%d\n", __FILE__, __LINE__);
         int success = 0;
 
         log_printf("Failure to establish write directory. First run?\n");
-
-        if (fs_set_write_dir(home))
-            if (fs_mkdir(CONFIG_USER))
-                if (fs_set_write_dir(user))
+debugPrint("%s:%d\n", __FILE__, __LINE__);
+        if (fs_set_write_dir(home)) {
+            debugPrint("%s:%d\n", __FILE__, __LINE__);
+            if (fs_mkdir(CONFIG_USER)) {
+debugPrint("%s:%d\n", __FILE__, __LINE__);
+                if (fs_set_write_dir(user)) {
+debugPrint("%s:%d\n", __FILE__, __LINE__);
                     success = 1;
-
+                }
+            }
+        }
+debugPrint("%s:%d\n", __FILE__, __LINE__);
         if (success)
         {
+debugPrint("%s:%d\n", __FILE__, __LINE__);
             log_printf("Write directory established at %s\n", user);
         }
         else
         {
+debugPrint("%s:%d\n", __FILE__, __LINE__);
             log_printf("Write directory not established at %s\n", user);
             fs_set_write_dir(NULL);
+debugPrint("%s:%d\n", __FILE__, __LINE__);
         }
+debugPrint("%s:%d\n", __FILE__, __LINE__);
     }
-
+debugPrint("%s:%d\n", __FILE__, __LINE__);
     fs_add_path_with_archives(user);
-
+debugPrint("%s:%d\n", __FILE__, __LINE__);
     free((void *) user);
+debugPrint("%s:%d\n", __FILE__, __LINE__);
 }
 
 /*---------------------------------------------------------------------------*/

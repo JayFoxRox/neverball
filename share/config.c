@@ -23,6 +23,12 @@
 #include "common.h"
 #include "fs.h"
 
+#ifdef NXDK
+#include <hal/debug.h>
+#else
+#define debugPrint(...)
+#endif
+
 /*---------------------------------------------------------------------------*/
 
 /* Integer options. */

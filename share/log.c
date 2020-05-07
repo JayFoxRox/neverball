@@ -78,6 +78,9 @@ debugPrint("%s\n", str);
 
 void log_init(const char *name, const char *path)
 {
+#ifdef NXDK
+debugPrint("log_init('%s', '%s')\n", name, path);
+#endif
     if (!log_fp)
     {
         if ((log_fp = fs_open_append(path)))
