@@ -2380,7 +2380,7 @@ __attribute__((constructor)) static void setup_xbox(void) {
   }
 
   // Show framebuffer, not debug-screen
-#if 0
+#if 1
   pb_show_front_screen();
 #else
   pb_show_debug_screen();
