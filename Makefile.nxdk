@@ -1,6 +1,6 @@
 NXDK_DIR = $(CURDIR)/../XboxDev/nxdk
 
-XBE_TITLE = NeverballX
+XBE_TITLE = Neverball
 OUTPUT_DIR = bin
 GEN_XISO = $(XBE_TITLE).iso
 
