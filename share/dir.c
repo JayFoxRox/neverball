@@ -31,7 +31,6 @@
 
 #ifdef NXDK
 #include <hal/debug.h>
-#include <_windows.h>
 #endif
 
 List dir_list_files(const char *path)

@@ -7,6 +7,8 @@
 
 #include <SDL.h>
 
+#include <windows.h>
+
 static unsigned int frame = 0; //FIXME: Remove
 static SDL_GameController* g = NULL;
 
