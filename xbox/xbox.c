@@ -8,6 +8,8 @@
 
 #include <windows.h>
 
+#include "swizzle.h"
+
 static unsigned int frame = 0; //FIXME: Remove
 static SDL_GameController* g = NULL;
 
@@ -168,7 +170,9 @@ typedef struct {
 
 typedef struct {
   GLsizei width;
+  unsigned int width_shift;
   GLsizei height;
+  unsigned int height_shift;
   size_t pitch;
   void* data;
   GLint min_filter;
@@ -901,12 +905,28 @@ static bool is_texture_complete(Texture* tx) {
   return true;
 }
 
+
+static unsigned int gl_to_xgu_texture_address(GLenum wrap) {
+  switch(wrap) {
+  case GL_REPEAT:          return XGU_WRAP;
+//  case GL_MIRROR_REPEAT:   return XGU_MIRROR;
+  case GL_CLAMP_TO_EDGE:   return XGU_CLAMP_TO_EDGE;
+//  case GL_CLAMP_TO_BORDER: return XGU_CLAMP_TO_BORDER;
+//  case GL_CLAMP:           return XGU_CLAMP;
+  default:
+    unimplemented("%d", wrap);
+    assert(false);
+    break;
+  }
+  return -1;
+}
+
 static unsigned int gl_to_xgu_texture_format(GLenum internalformat) {
   switch(internalformat) {
-  case GL_LUMINANCE:       return XGU_TEXTURE_FORMAT_Y8;
-  case GL_LUMINANCE_ALPHA: return XGU_TEXTURE_FORMAT_A8Y8;
-  case GL_RGB:             return XGU_TEXTURE_FORMAT_X8R8G8B8;
-  case GL_RGBA:            return XGU_TEXTURE_FORMAT_A8B8G8R8;
+  case GL_LUMINANCE:       return XGU_TEXTURE_FORMAT_Y8_SWIZZLED;
+  case GL_LUMINANCE_ALPHA: return XGU_TEXTURE_FORMAT_A8Y8_SWIZZLED;
+  case GL_RGB:             return XGU_TEXTURE_FORMAT_X8R8G8B8_SWIZZLED;
+  case GL_RGBA:            return XGU_TEXTURE_FORMAT_A8B8G8R8_SWIZZLED;
   default:
     unimplemented("%d", internalformat);
     assert(false);
@@ -1002,9 +1022,11 @@ static void setup_textures() {
     p = xgu_set_texture_offset(p, i, (uintptr_t)tx->data & 0x03ffffff);
     p = xgu_set_texture_format(p, i, context_dma, cubemap_enable, border, dimensionality,
                                      gl_to_xgu_texture_format(tx->internal_base_format), 1,
-                                     0,0,0);
-    unimplemented("Setup wrap"); //FIXME: !!!
-    p = xgu_set_texture_address(p, i, 3, false, 3, false, 3, false, false); //FIXME: Shitty workaround for XGU
+                                     tx->width_shift,tx->height_shift,0);
+    p = xgu_set_texture_address(p, i, gl_to_xgu_texture_address(tx->wrap_s), false,
+                                      gl_to_xgu_texture_address(tx->wrap_t), false,
+                                      XGU_CLAMP_TO_EDGE, false,
+                                      false);
     p = xgu_set_texture_control0(p, i, true, 0, 0);
     p = xgu_set_texture_control1(p, i, tx->pitch);
     p = xgu_set_texture_filter(p, i, 0, XGU_TEXTURE_CONVOLUTION_QUINCUNX,
@@ -1032,8 +1054,8 @@ static void setup_textures() {
     p = xgu_set_texture_matrix_enable(p, i, true);
     unimplemented(); //FIXME: Not hitting pixel centers yet!
     const float m[4*4] = {
-      tx->width, 0.0f,       0.0f, 0.0f,
-      0.0f,      tx->height, 0.0f, 0.0f,
+      1.0f,      0.0f,       0.0f, 0.0f,
+      0.0f,      1.0f,       0.0f, 0.0f,
       0.0f,      0.0f,       1.0f, 0.0f,
       0.0f,      0.0f,       0.0f, 1.0f
     };
@@ -1812,6 +1834,13 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level, GLint internal
     return;
   }
 
+  tx->width_shift = __builtin_ffs(width) - 1;
+  tx->height_shift = __builtin_ffs(height) - 1;
+  debugPrint("%d = %d [%d]\n", width, 1 << tx->width_shift, tx->width_shift);
+  debugPrint("%d = %d [%d]\n", height, 1 << tx->height_shift, tx->height_shift);
+  assert(width == (1 << tx->width_shift));
+  assert(height == (1 << tx->height_shift));
+
   tx->width = width;
   tx->height = height;
   tx->pitch = width * bpp / 8;
@@ -1825,16 +1854,17 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level, GLint internal
 
   // Copy pixels
   //FIXME: Respect GL pixel packing stuff
-  //FIXME: Swizzle
+  debugPrint("swizzling\n");
   assert(pixels != NULL);
   if (tx->internal_base_format == GL_RGB) {
     assert(format == GL_RGB);
     assert(type == GL_UNSIGNED_BYTE);
+    uint8_t* tmp = malloc(tx->width * tx->height * 4);
     const uint8_t* src = pixels;
-    uint8_t* dst = tx->data;
+    uint8_t* dst = tmp;
     assert(tx->pitch == tx->width * 4);
     for(int y = 0; y < tx->height; y++) {
-      for(int x = 0; x < tx->height; x++) {
+      for(int x = 0; x < tx->width; x++) {
         //FIXME: Can also use different texture format instead probably
         dst[0] = src[2];
         dst[1] = src[1];
@@ -1844,9 +1874,16 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level, GLint internal
         src += 3;
       }
     }
+  debugPrint("1 swizzling..\n");
+    swizzle_rect(tmp, tx->width, tx->height, tx->data, tx->width * 4, 4);
+  debugPrint("1 okay?!\n");
+    free(tmp);
   } else {
-    memcpy(tx->data, pixels, size);
+  debugPrint("2 swizzling..\n");
+    swizzle_rect(pixels, tx->width, tx->height, tx->data, tx->pitch, bpp / 8);
+  debugPrint("2 okay?!\n");
   }
+  debugPrint("swizzling done\n");
 }
 
 GL_API void GL_APIENTRY glTexParameteri (GLenum target, GLenum pname, GLint param) {

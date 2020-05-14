@@ -89,7 +89,7 @@ BALL_SRCS += share/fs_stdio.c
 BALL_SRCS += share/tilt_null.c
 BALL_SRCS += share/hmd_null.c
 
-SRCS = $(BALL_SRCS) xbox/xbox.c
+SRCS = $(BALL_SRCS) xbox/xbox.c xbox/swizzle.c
 #SHADER_OBJS = ps.inl vs.inl
 
 # Add SDL
