@@ -1215,7 +1215,7 @@ static void prepare_drawing() {
   // Set the register combiner
   setup_texenv();
 
-#if 1
+#if 0
   {
     // Set some safe state
     uint32_t* p = pb_begin();
