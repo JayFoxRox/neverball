@@ -417,8 +417,9 @@ static XguCullFace gl_to_xgu_cull_face(GLenum mode) {
 
 static XguFrontFace gl_to_xgu_front_face(GLenum mode) {
   switch(mode) {
-  case GL_CW:  return XGU_FRONT_CW;
-  case GL_CCW: return XGU_FRONT_CCW;
+  //FIXME: Why do I have to invert this?!
+  case GL_CW:  return XGU_FRONT_CCW;
+  case GL_CCW: return XGU_FRONT_CW;
   default:
     unimplemented("%d", mode);
     assert(false);
@@ -2447,5 +2448,7 @@ __attribute__((constructor)) static void setup_xbox(void) {
   debugPrint("\n\n");
 
   //FIXME: Bump GPU in right state?
+
+  glFrontFace(GL_CW);
 
 }
