@@ -1112,77 +1112,19 @@ debugPrint("\ndraw:\n");
 
 
 
-
-float f = 6000.0f;
-
   if (true) {
-    float m[4*4];
-    matrix_identity(m);
-static float dx = 320.0f;
-static float dy = -240.0f;
-#if 0
-if (g != NULL) {
-  float xx = SDL_GameControllerGetAxis(g, SDL_CONTROLLER_AXIS_RIGHTX);
-  if (fabsf(xx) > 1000) { dx += xx/f; }
-  float xy = SDL_GameControllerGetAxis(g, SDL_CONTROLLER_AXIS_RIGHTY);
-  if (fabsf(xy) > 1000) { dy += xy/f; }
-}
-pb_print("%d %d scale\n", (int)(1000*dx), (int)(1000*dy));
-#endif
-    _math_matrix_scale(m, dx, dy, (float)0xFFFF);
+    float max_z = 0xFFFFFF;
+    float m[4*4] = {
+      320.0f,    0.0f, 0.0f, 0.0f,
+        0.0f, -240.0f, 0.0f, 0.0f,
+        0.0f,    0.0f, max_z / 2.0f, 0.0f,
+      320.0f,  240.0f, max_z / 2.0f, 1.0f
+    };
     float t[4*4];
     memcpy(t, matrix_p_now, sizeof(t));
-    matmul4(matrix_p_now, t, m);
+    matmul4(matrix_p_now, m, t);
   }
 
-
-  if (true) {
-    float m[4*4];
-    matrix_identity(m);
-static float dx = 0.0f;
-static float dy = -480.0f;
-#if 0
-if (g != NULL) {
-  float xx = SDL_GameControllerGetAxis(g, SDL_CONTROLLER_AXIS_LEFTX);
-  if (fabsf(xx) > 1000) { dx += xx/f; }
-  float xy = SDL_GameControllerGetAxis(g, SDL_CONTROLLER_AXIS_LEFTY);
-  if (fabsf(xy) > 1000) { dy += xy/f; }
-}
-pb_print("%d %d trans\n", (int)(1000*dx), (int)(1000*dy));
-#endif
-    _math_matrix_translate(m, dx, dy, 0.0f);
-    float t[4*4];
-    memcpy(t, matrix_p_now, sizeof(t));
-    matmul4(matrix_p_now, t, m);
-  }
-
-#if 0
-matrix_p_now[4*3+0] = 0.0f;
-matrix_p_now[4*3+1] = 0.14f;
-matrix_p_now[4*3+2] = -0.99f;
-matrix_p_now[4*3+3] = 501.0f;
-#endif
-
-#if 0
-matrix_p_now[4*0+3] = 320.0f;
-matrix_p_now[4*1+3] = 240.0f;
-#endif
-#if 0
-matrix_p_now[4*2+0] = 10.0f;
-matrix_p_now[4*2+1] = 10.0f;
-matrix_p_now[4*2+3] = 0.0f;
-#endif
-#if 0
-matrix_p_now[4*3+0] = 10.0f;
-matrix_p_now[4*3+1] = 10.0f;
-matrix_p_now[4*3+2] = 0.0f;
-#endif
-#if 0
-matrix_p_now[4*3+3] = 10.0f;
-#endif
-
-//    matrix_identity(matrix_mv_now);
-    //matrix_identity(matrix_p_now);
 
 #if 1
 debugPrint("\ndraw (xbox):\n");
@@ -1190,32 +1132,6 @@ debugPrint("\ndraw (xbox):\n");
 #endif
 
 //Sleep(100);
-#endif
-
-#if 0
-    float m_viewport[4*4] = {
-        320.0f,   0.0f,   0.0f,   0.0f,
-        0.0f,   -240.0f,   0.0f,   0.0f,
-        0.0f,     0.0f, 0xFFFF,   0,
-        0.0f,    480.0f,   0,   1
-    };
-//memcpy(matrix_mv_now, m_viewport, sizeof(m_viewport));
-//memcpy(matrix_p_now, m_identity, sizeof(m_identity));
-
-matmul4(matrix_p_now,matrix_p_now,m_viewport);
-#endif
-
-#if 0
-    float m_viewport[4*4] = {
-        0.5 * width/2.0f, 0.0f,         0.0f,        width/2.0f,
-        0.0f,       0.5*-height/2.0f, 0.0f,          height/2.0f,
-        0.0f,       0.0f,         (float)0x7FFF, 0x7FFF,
-        0.0f,       0.0f,         0.0f,          1.0f
-    };
-//memcpy(matrix_mv_now, m_viewport, sizeof(m_viewport));
-//memcpy(matrix_p_now, m_identity, sizeof(m_identity));
-
-matmul4(matrix_p_now,m_viewport,matrix_p_now);
 #endif
 
 
@@ -1261,7 +1177,7 @@ TRANSPOSE(matrix_mv_now)
   p = xgu_set_projection_matrix(p, matrix_p_now); //FIXME: Unused in XQEMU
   p = xgu_set_composite_matrix(p, matrix_c_now); //FIXME: Always used in XQEMU?
   p = xgu_set_viewport_offset(p, 0.0f, 0.0f, 0.0f, 0.0f);
-  p = xgu_set_viewport_scale(p, 1.0f / width, 1.0f / height, 1.0f / (float)0xFFFF, 1.0f); //FIXME: Ignored?!
+  p = xgu_set_viewport_scale(p, 1.0f, 1.0f, 1.0f, 1.0f); //FIXME: Ignored?!
   pb_end(p);
 
 }
