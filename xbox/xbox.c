@@ -1501,8 +1501,10 @@ static uint32_t* borders(uint32_t* p) {
 // Draw calls
 GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count) {
 
+#if 0
 unimplemented("disabled due to errors on physical hardware");
 return; //FIXME: !!!
+#endif
 
   static unsigned int f = -1;
   if (f == frame) {
