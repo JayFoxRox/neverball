@@ -1361,9 +1361,9 @@ GL_API void GL_APIENTRY glClearColor (GLfloat red, GLfloat green, GLfloat blue, 
 
   uint32_t color = 0;
   //FIXME: Verify order
-  color |= f_to_u8(red) << 0;
+  color |= f_to_u8(red) << 16;
   color |= f_to_u8(green) << 8;
-  color |= f_to_u8(blue) << 16;
+  color |= f_to_u8(blue) << 0;
   color |= f_to_u8(alpha) << 24;
 
   uint32_t* p = pb_begin();
