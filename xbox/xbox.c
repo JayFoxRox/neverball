@@ -964,7 +964,7 @@ static void setup_textures() {
           .array = { .enabled = false },
           .value = { clip_plane->x, clip_plane->y, clip_plane->z, clip_plane->w }
         };
-        setup_attrib(9 /*FIXME: XGU_TEXCOORD0_ARRAY*/+i, &attrib);
+        setup_attrib(XGU_TEXCOORD0_ARRAY+i, &attrib);
 
         // Setup shader
         //FIXME: Can use 4 clip planes per texture unit by using texture-matrix?
@@ -1285,10 +1285,10 @@ static void prepare_drawing() {
   setup_attrib(XGU_VERTEX_ARRAY, &state.vertex_array);
   setup_attrib(XGU_COLOR_ARRAY, &state.color_array);
   setup_attrib(XGU_NORMAL_ARRAY, &state.normal_array);
-  setup_attrib( 9 /*FIXME:XGU_TEXCOORD0_ARRAY*/, &state.texture_coord_array[0]);
-  setup_attrib(10 /*FIXME:XGU_TEXCOORD1_ARRAY*/, &state.texture_coord_array[1]);
-  setup_attrib(11 /*FIXME:XGU_TEXCOORD2_ARRAY*/, &state.texture_coord_array[2]);
-  setup_attrib(12 /*FIXME:XGU_TEXCOORD3_ARRAY*/, &state.texture_coord_array[3]);
+  setup_attrib(XGU_TEXCOORD0_ARRAY, &state.texture_coord_array[0]);
+  setup_attrib(XGU_TEXCOORD1_ARRAY, &state.texture_coord_array[1]);
+  setup_attrib(XGU_TEXCOORD2_ARRAY, &state.texture_coord_array[2]);
+  setup_attrib(XGU_TEXCOORD3_ARRAY, &state.texture_coord_array[3]);
 
   // Set up all matrices etc.
   setup_matrices();
