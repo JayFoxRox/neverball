@@ -295,7 +295,8 @@ static uint32_t* set_enabled(uint32_t* p, GLenum cap, bool enabled) {
     p = xgu_set_alpha_test_enable(p, enabled);
     break;
   case GL_NORMALIZE:
-    unimplemented("GL_NORMALIZE"); //FIXME: Missing from XGU
+    //FIXME: Needs more changes to matrices?
+    p = xgu_set_normalization_enable(p, enabled);
     break;
   case GL_CULL_FACE:
     p = xgu_set_cull_face_enable(p, enabled);
