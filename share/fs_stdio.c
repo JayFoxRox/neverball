@@ -288,6 +288,7 @@ static fs_file fs_open_write_flags(const char *path, int append)
 
             if ((real = path_join(fs_dir_write, path)))
             {
+                path_normalize(real);
 #ifdef NXDK
 debugPrint("Trying to open '%s' (write)\n", real);
 #endif
