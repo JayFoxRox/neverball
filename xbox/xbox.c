@@ -1338,18 +1338,22 @@ GL_API void GL_APIENTRY glClear (GLbitfield mask) {
 
   pb_print("Clearing\n");
 
-  uint32_t* p = pb_begin();
-  //FIXME: Set clear region
-  p = xgu_clear_surface(p, flags);
-  pb_end(p);
-
   //FIXME: Store size we used to init
   int width = pb_back_buffer_width();
   int height = pb_back_buffer_height();
 
+  uint32_t* p = pb_begin();
+  p = xgu_set_clear_rect_horizontal(p, 0, width);
+  p = xgu_set_clear_rect_vertical(p, 0, height);
+  p = xgu_set_zstencil_clear_value(p, 0xFFFFFF00); //FIXME: This assumes Z24S8
+  p = xgu_clear_surface(p, flags);
+  pb_end(p);
+
+
+
   //FIXME: Remove this hack!
-  pb_erase_depth_stencil_buffer(0, 0, width, height); //FIXME: Do in XGU
-  pb_fill(0, 0, width, height, 0x80808080); //FIXME: Do in XGU
+  //pb_erase_depth_stencil_buffer(0, 0, width, height); //FIXME: Do in XGU
+  //pb_fill(0, 0, width, height, 0x80808080); //FIXME: Do in XGU
 
 }
 
