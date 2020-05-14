@@ -1069,9 +1069,9 @@ static void setup_matrices() {
     /* A generic identity matrix */
     const float m_identity[4*4] = DEFAULT_MATRIX();
 
-    //FIXME: p = xgu_set_skinning(p, XGU_SKINNING_OFF);
-    //FIXME: p = xgu_set_normalization(p, false);
-    //FIXME: p = xgu_set_lighting_enable(p, false);
+    p = xgu_set_skin_mode(p, XGU_SKIN_MODE_OFF);
+    p = xgu_set_normalization_enable(p, false);
+    p = xgu_set_lighting_enable(p, false);
 
 
 
