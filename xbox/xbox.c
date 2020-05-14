@@ -1,4 +1,3 @@
-#include <hal/debug.h>
 #include <stdarg.h>
 #include <stdio.h>
 
@@ -11,6 +10,9 @@
 
 static unsigned int frame = 0; //FIXME: Remove
 static SDL_GameController* g = NULL;
+
+#if 0
+#include <hal/debug.h>
 
 void debugPrintFloat(float f) {
 #if 0
@@ -40,6 +42,13 @@ static void _unimplemented(const char* fmt, ...) {
   debugPrint(buf);
 }
 #define unimplemented(fmt, ...) _unimplemented("%s (%s:%d) " fmt "\n", __FUNCTION__, __FILE__, __LINE__, __VA_ARGS__)
+
+#else
+void debugPrintFloat(float f) {}
+#define debugPrintFloat(f) 0
+#define debugPrint(...) 0
+#define unimplemented(fmt, ...) 0
+#endif
 
 // stdlib.h
 #include <stdlib.h>

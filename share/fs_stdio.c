@@ -14,6 +14,8 @@
 
 #ifdef NXDK
 #include <hal/debug.h>
+#else
+#define debugPrint(...) 0
 #endif
 #include <assert.h>
 

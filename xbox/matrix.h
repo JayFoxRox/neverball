@@ -8,8 +8,12 @@
 #define debugPrint(...) printf(__VA_ARGS__)
 #define debugPrintFloat(f) printf("%.4f", f)
 #else
+#ifndef debugPrint
 #include <hal/debug.h>
+#endif
+#ifndef debugPrintFloat
 void debugPrintFloat(float);
+#endif
 #endif
 
 #define PRINT_MATRIX(_m) \
