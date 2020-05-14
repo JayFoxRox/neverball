@@ -1004,7 +1004,7 @@ static void setup_textures() {
                                      gl_to_xgu_texture_format(tx->internal_base_format), 1,
                                      0,0,0);
     unimplemented("Setup wrap"); //FIXME: !!!
-    p = xgu_set_texture_address(p, i, 0x00030303); //FIXME: Shitty workaround for XGU
+    p = xgu_set_texture_address(p, i, 3, false, 3, false, 3, false, false); //FIXME: Shitty workaround for XGU
     p = xgu_set_texture_control0(p, i, true, 0, 0);
     p = xgu_set_texture_control1(p, i, tx->pitch);
     p = xgu_set_texture_filter(p, i, 0, XGU_TEXTURE_CONVOLUTION_QUINCUNX,
