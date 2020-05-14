@@ -393,6 +393,16 @@ static XguStencilOp gl_to_xgu_stencil_op(GLenum op) {
   }
 }
 
+static XguFuncType gl_to_xgu_func_type(GLenum func) {
+  switch(func) {
+  case GL_LESS: return XGU_FUNC_LESS;
+  default:
+    unimplemented("%d", func);
+    assert(false);
+    return -1;
+  }
+}
+
 static XguCullFace gl_to_xgu_cull_face(GLenum mode) {
   switch(mode) {
   case GL_FRONT:          return XGU_CULL_FRONT;
@@ -2010,7 +2020,9 @@ GL_API void GL_APIENTRY glColorMask (GLboolean red, GLboolean green, GLboolean b
 }
 
 GL_API void GL_APIENTRY glDepthFunc (GLenum func) {
-  unimplemented(); //FIXME: Missing from XGU
+  uint32_t* p = pb_begin();
+//  p = xgu_set_depth_func(p, gl_to_xgu_func_type(func));
+  pb_end(p);
 }
 
 GL_API void GL_APIENTRY glDepthMask (GLboolean flag) {
