@@ -899,7 +899,7 @@ void r_apply_mtrl(struct s_rend *rend, int mi)
 
     /* Environment mapping. */
 
-#if !ENABLE_OPENGLES
+#if !ENABLE_OPENGLES || defined(NXDK)
     if ((mp_flags & M_ENVIRONMENT) ^ (mq_flags & M_ENVIRONMENT))
     {
         if (mp_flags & M_ENVIRONMENT)

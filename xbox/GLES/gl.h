@@ -328,3 +328,18 @@ GL_API void GL_APIENTRY glPixelStorei (GLenum pname, GLint param);
 
 // Not used in neverball, only for debugging
 GL_API void GL_APIENTRY glGetFloatv (GLenum pname, GLfloat *data);
+
+
+
+
+
+
+
+// Not in GLES, but added for Xbox
+#define GL_TEXTURE_GEN_MODE 40000
+#define GL_SPHERE_MAP 40001
+#define GL_S 40002
+#define GL_T 40003
+#define GL_TEXTURE_GEN_S 40004
+#define GL_TEXTURE_GEN_T 40005
+GL_API void GL_APIENTRY glTexGeni (GLenum coord, GLenum pname, GLint param);

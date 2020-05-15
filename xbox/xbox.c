@@ -282,6 +282,10 @@ typedef struct {
   Attrib vertex_array;
   Attrib color_array;
   Attrib normal_array;
+  bool texgen_s_enabled[4];
+  bool texgen_t_enabled[4];
+  GLenum texgen_s[4];
+  GLenum texgen_t[4];
   bool texture_2d[4]; //FIXME: Move into a texture unit array
   GLuint texture_binding_2d[4];
   Light light[3]; //FIXME: no more needed in neverball
@@ -293,8 +297,15 @@ static State state = {
 
 #include "matrix.h"
 
+
 static uint32_t* set_enabled(uint32_t* p, GLenum cap, bool enabled) {
   switch(cap) {
+  case GL_TEXTURE_GEN_S:
+    state.texgen_s_enabled[active_texture] = enabled;
+    break;
+  case GL_TEXTURE_GEN_T:
+    state.texgen_t_enabled[active_texture] = enabled;
+    break;
   case GL_ALPHA_TEST:
     p = xgu_set_alpha_test_enable(p, enabled);
     break;
@@ -912,6 +923,16 @@ static bool is_texture_complete(Texture* tx) {
   return true;
 }
 
+static unsigned int gl_to_xgu_texgen(GLenum texgen) {
+  switch(texgen) {
+  case GL_SPHERE_MAP: return XGU_TEXGEN_SPHERE_MAP;
+  default:
+    unimplemented("%d", texgen);
+    assert(false);
+    break;
+  }
+  return -1;
+}
 
 static unsigned int gl_to_xgu_texture_address(GLenum wrap) {
   switch(wrap) {
@@ -1054,8 +1075,10 @@ static void setup_textures() {
     p = pb_push1(p,NV20_TCL_PRIMITIVE_3D_TX_FILTER(i),0x04074000); //set stage 0 texture filters (AA!)
 #endif
 
-    p = xgu_set_texgen_s(p, i, XGU_TEXGEN_DISABLE);
-    p = xgu_set_texgen_t(p, i, XGU_TEXGEN_DISABLE);
+    p = xgu_set_texgen_s(p, i, state.texgen_s_enabled[i] ? gl_to_xgu_texgen(state.texgen_s[i])
+                                                         : XGU_TEXGEN_DISABLE);
+    p = xgu_set_texgen_t(p, i, state.texgen_t_enabled[i] ? gl_to_xgu_texgen(state.texgen_t[i])
+                                                         : XGU_TEXGEN_DISABLE);
     p = xgu_set_texgen_r(p, i, XGU_TEXGEN_DISABLE);
     p = xgu_set_texgen_q(p, i, XGU_TEXGEN_DISABLE);
     p = xgu_set_texture_matrix_enable(p, i, true);
@@ -1289,6 +1312,21 @@ static void prepare_drawing() {
 }
 
 
+GL_API void GL_APIENTRY glTexGeni (GLenum coord, GLenum pname, GLint param) {
+  assert(pname == GL_TEXTURE_GEN_MODE);
+  switch(coord) {
+  case GL_S:
+    state.texgen_s[active_texture] = param;
+    break;
+  case GL_T:
+    state.texgen_t[active_texture] = param;
+    break;
+  default:
+    unimplemented("%d", coord);
+    assert(false);
+    break;
+  }
+}
 
 
 
