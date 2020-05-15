@@ -105,7 +105,7 @@ all: $(OUTPUT_DIR)/default.xbe data $(GEN_XISO)
 #FIXME: Copy files to $(OUTPUT_DIR)
 data: force
 	@echo "Updating data"
-	@cp -r $(CURDIR)/data $(OUTPUT_DIR)/Neverball
+	@cp -r $(CURDIR)/data/. $(OUTPUT_DIR)/Neverball
 	@echo "Updating config"
 	@cp -r $(CURDIR)/xbox/neverballrc $(OUTPUT_DIR)/Neverball #FIXME: Buggy
 
