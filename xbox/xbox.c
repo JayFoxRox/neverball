@@ -1987,7 +1987,9 @@ GL_API void GL_APIENTRY glDepthFunc (GLenum func) {
 }
 
 GL_API void GL_APIENTRY glDepthMask (GLboolean flag) {
-  unimplemented(); //FIXME: Missing from XGU
+  uint32_t* p = pb_begin();
+  p = xgu_set_depth_mask(p, flag);
+  pb_end(p);  
 }
 
 GL_API void GL_APIENTRY glEnable (GLenum cap) {
