@@ -399,7 +399,14 @@ static XguStencilOp gl_to_xgu_stencil_op(GLenum op) {
 
 static XguFuncType gl_to_xgu_func_type(GLenum func) {
   switch(func) {
-  case GL_LESS: return XGU_FUNC_LESS;
+  case GL_NEVER:    return XGU_FUNC_NEVER;
+  case GL_LESS:     return XGU_FUNC_LESS;
+  case GL_EQUAL:    return XGU_FUNC_EQUAL;
+  case GL_LEQUAL:   return XGU_FUNC_LESS_OR_EQUAL;
+  case GL_GREATER:  return XGU_FUNC_GREATER;
+  case GL_NOTEQUAL: return XGU_FUNC_NOT_EQUAL;
+  case GL_GEQUAL:   return XGU_FUNC_GREATER_OR_EQUAL;
+  case GL_ALWAYS:   return XGU_FUNC_ALWAYS;
   default:
     unimplemented("%d", func);
     assert(false);
@@ -1981,7 +1988,7 @@ GL_API void GL_APIENTRY glColorMask (GLboolean red, GLboolean green, GLboolean b
 
 GL_API void GL_APIENTRY glDepthFunc (GLenum func) {
   uint32_t* p = pb_begin();
-//  p = xgu_set_depth_func(p, gl_to_xgu_func_type(func));
+  p = xgu_set_depth_func(p, gl_to_xgu_func_type(func));
   pb_end(p);
 }
 
