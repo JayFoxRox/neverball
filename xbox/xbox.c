@@ -1081,7 +1081,7 @@ static void setup_textures() {
                                                          : XGU_TEXGEN_DISABLE);
     p = xgu_set_texgen_r(p, i, XGU_TEXGEN_DISABLE);
     p = xgu_set_texgen_q(p, i, XGU_TEXGEN_DISABLE);
-    p = xgu_set_texture_matrix_enable(p, i, true);
+    p = xgu_set_texture_matrix_enable(p, i, true); //FIXME: See if this makes a perf difference and only enable if not identity?
     unimplemented(); //FIXME: Not hitting pixel centers yet?!
     p = xgu_set_texture_matrix(p, i, &matrix_t[i][0]);
 
