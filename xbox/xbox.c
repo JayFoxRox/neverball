@@ -1059,15 +1059,8 @@ static void setup_textures() {
     p = xgu_set_texgen_r(p, i, XGU_TEXGEN_DISABLE);
     p = xgu_set_texgen_q(p, i, XGU_TEXGEN_DISABLE);
     p = xgu_set_texture_matrix_enable(p, i, true);
-    unimplemented(); //FIXME: Not hitting pixel centers yet!
-    const float m[4*4] = {
-      1.0f,      0.0f,       0.0f, 0.0f,
-      0.0f,      1.0f,       0.0f, 0.0f,
-      0.0f,      0.0f,       1.0f, 0.0f,
-      0.0f,      0.0f,       0.0f, 1.0f
-    };
-    unimplemented(); //FIXME: Also respect matrix_t
-    p = xgu_set_texture_matrix(p, i, m);
+    unimplemented(); //FIXME: Not hitting pixel centers yet?!
+    p = xgu_set_texture_matrix(p, i, &matrix_t[i][0]);
 
     pb_end(p);
 
@@ -1788,6 +1781,7 @@ GL_API void GL_APIENTRY glActiveTexture (GLenum texture) {
 
 GL_API void GL_APIENTRY glClientActiveTexture (GLenum texture) {
   client_active_texture = texture - GL_TEXTURE0;
+  glMatrixMode(matrix_mode); // Necessary because the matrix pointers are cached
 }
 
 GL_API void GL_APIENTRY glDeleteTextures (GLsizei n, const GLuint *textures) {
