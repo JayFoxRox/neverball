@@ -2027,7 +2027,11 @@ GL_API void GL_APIENTRY glFrontFace (GLenum mode) {
 
 // Stencil actions
 GL_API void GL_APIENTRY glStencilFunc (GLenum func, GLint ref, GLuint mask) {
-  unimplemented(); //FIXME: Missing from XGU
+  uint32_t* p = pb_begin();
+  p = xgu_set_stencil_func(p, gl_to_xgu_func_type(func));
+  p = xgu_set_stencil_func_ref(p, ref);
+  p = xgu_set_stencil_func_mask(p, mask);
+  pb_end(p);
 }
 
 GL_API void GL_APIENTRY glStencilOp (GLenum fail, GLenum zfail, GLenum zpass) {
