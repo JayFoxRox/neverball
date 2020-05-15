@@ -99,9 +99,6 @@ NXDK_SDL = y
 include $(CURDIR)/xbox/Makefile-vorbis.xbox
 include $(CURDIR)/xbox/Makefile-ogg.xbox
 
-# XGU
-CFLAGS += -idirafter$(CURDIR)/xbox/nxdk/lib
-
 all: $(OUTPUT_DIR)/default.xbe data $(GEN_XISO)
 
 # Add data to XISO
