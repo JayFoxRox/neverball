@@ -146,13 +146,12 @@ typedef unsigned int GLbitfield;
 #define GL_LIGHT0 10076
 #define GL_LIGHT1 10077
 #define GL_LIGHT2 10078
-
-#define GL_COMBINE 10079
-#define GL_COMBINE_ALPHA 10080
-#define GL_COMBINE_RGB 10081
-
-#define GL_INTERPOLATE 10082
-#define GL_MODULATE 10083
+#define GL_LIGHT3 10079
+#define GL_LIGHT4 10080
+#define GL_LIGHT5 10081
+#define GL_LIGHT6 10082
+#define GL_LIGHT7 10083
+//FIXME: This also needs to reserve many other slots until at least GL_LIGHT7
 
 #define GL_NEAREST 10084
 
@@ -169,6 +168,13 @@ typedef unsigned int GLbitfield;
 
 #define GL_TEXTURE_ENV 10092
 #define GL_TEXTURE_ENV_MODE 10093
+
+#define GL_COMBINE 10094
+#define GL_COMBINE_ALPHA 10095
+#define GL_COMBINE_RGB 10096
+
+#define GL_INTERPOLATE 10097
+#define GL_MODULATE 10098
 
 
 
@@ -343,3 +349,15 @@ GL_API void GL_APIENTRY glGetFloatv (GLenum pname, GLfloat *data);
 #define GL_TEXTURE_GEN_S 40004
 #define GL_TEXTURE_GEN_T 40005
 GL_API void GL_APIENTRY glTexGeni (GLenum coord, GLenum pname, GLint param);
+
+
+
+// Backport from nv2a-re
+#define GL_AMBIENT_AND_DIFFUSE 60
+#define GL_CONSTANT_ATTENUATION 100
+#define GL_LINEAR_ATTENUATION 110
+#define GL_QUADRATIC_ATTENUATION 120
+#define GL_SPOT_EXPONENT 130
+#define GL_SPOT_CUTOFF 140
+#define GL_SPOT_DIRECTION 150
+#define GL_LIGHT_MODEL_LOCAL_VIEWER 210

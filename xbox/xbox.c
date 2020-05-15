@@ -10,6 +10,51 @@
 
 #include "swizzle.h"
 
+static float viewport_matrix[4*4];
+
+static float _max(float a, float b) {
+  return (a > b) ? a : b;
+}
+
+static float _dot3(const float* a, const float* b) {
+  return a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+}
+
+static float _dot4(const float* a, const float* b) {
+  return _dot3(a,b)+a[3]*b[3];
+}
+
+static void _normalize(float* v) {
+  float l = sqrtf(_dot3(v,v));
+  v[0] /= l;
+  v[1] /= l;
+  v[2] /= l;
+}
+
+static void transposeMatrix(float* out, const float* in) {
+  float t[4*4];
+  for(int i = 0; i < 4; i++) {
+    for(int j = 0; j < 4; j++) {
+      t[i*4+j] = in[i+4*j];
+    }
+  } 
+  memcpy(out, t, sizeof(t));
+}
+
+static void mult_vec4_mat4(float* o, const float* m, const float* v) {
+  float t[4*4];
+  //memcpy(t, m, sizeof(t));
+  transposeMatrix(t, m);
+  //printf("%f\n", t[0*4+3]);
+  //printf("%f\n", t[1*4+3]);
+  //printf("%f\n", t[2*4+3]);
+  //printf("%f\n", t[3*4+3]);
+  o[0] = _dot4(&t[0*4], v);
+  o[1] = _dot4(&t[1*4], v);
+  o[2] = _dot4(&t[2*4], v);
+  o[3] = _dot4(&t[3*4], v);
+}
+
 static unsigned int frame = 0; //FIXME: Remove
 static SDL_GameController* g = NULL;
 
@@ -274,8 +319,44 @@ TexEnv texenvs[4] = {
 
 typedef struct {
   bool enabled;
-  //FIXME: Store other attributes?
+  bool is_dir;
+  struct {
+    float x;
+    float y;
+    float z;
+    float w;
+  } position;
+  struct {
+    float x;
+    float y;
+    float z;
+  } spot_direction;
+  float spot_exponent;
+  float spot_cutoff;
+  struct {
+    float r;
+    float g;
+    float b;
+    float a;
+  } diffuse;
+  struct {
+    float r;
+    float g;
+    float b;
+    float a;
+  } specular;
+  struct {
+    float r;
+    float g;
+    float b;
+    float a;
+  } ambient;
+  float constant_attenuation;
+  float linear_attenuation;
+  float quadratic_attenuation;
 } Light;
+
+#define GL_MAX_LIGHTS 8
 
 typedef struct {
   Attrib texture_coord_array[4];
@@ -288,7 +369,43 @@ typedef struct {
   GLenum texgen_t[4];
   bool texture_2d[4]; //FIXME: Move into a texture unit array
   GLuint texture_binding_2d[4];
-  Light light[3]; //FIXME: no more needed in neverball
+  Light lights[GL_MAX_LIGHTS]; //FIXME: no more needed in neverball
+  bool color_material_enabled;
+  GLenum color_material_front;
+  GLenum color_material_back;
+  struct {
+    float r;
+    float g;
+    float b;
+    float a; //FIXME: Unused?!
+  } light_model_ambient;
+  struct {
+    struct {
+      float r;
+      float g;
+      float b;
+      float a; //FIXME: Unused?!
+    } emission;
+    struct {
+      float r;
+      float g;
+      float b;
+      float a; //FIXME: Unused?!
+    } ambient;
+    struct {
+      float r;
+      float g;
+      float b;
+      float a; //FIXME: Unused?!
+    } diffuse;
+    struct {
+      float r;
+      float g;
+      float b;
+      float a; //FIXME: Unused?!
+    } specular;
+    float shininess;
+  } material[2];
 } State;
 static State state = {
   .texture_2d = { false, false, false, false },
@@ -319,22 +436,23 @@ static uint32_t* set_enabled(uint32_t* p, GLenum cap, bool enabled) {
   case GL_DEPTH_TEST:
     p = xgu_set_depth_test_enable(p, enabled);
     break;
+  case GL_STENCIL_TEST:
+    p = xgu_set_stencil_test_enable(p, enabled);
+    break;
   case GL_TEXTURE_2D:
     state.texture_2d[active_texture] = enabled;
     break;
   case GL_BLEND:
     p = xgu_set_blend_enable(p, enabled);
     break;
-  case GL_LIGHT0:
-  case GL_LIGHT1:
-  case GL_LIGHT2:
-    state.light[cap - GL_LIGHT0].enabled = enabled;
+  case GL_LIGHT0 ... GL_LIGHT0+GL_MAX_LIGHTS-1:
+    state.lights[cap - GL_LIGHT0].enabled = enabled;
     break;
   case GL_LIGHTING:
     p = xgu_set_lighting_enable(p, enabled);
     break;
   case GL_COLOR_MATERIAL:
-    unimplemented(); //FIXME: !!!
+    state.color_material_enabled = enabled;
     break;
   case GL_POLYGON_OFFSET_FILL:
     unimplemented(); //FIXME: !!!
@@ -401,6 +519,7 @@ static XguTextureFilter gl_to_xgu_texture_filter(GLenum filter) {
 
 static XguStencilOp gl_to_xgu_stencil_op(GLenum op) {
   switch(op) {
+  case GL_KEEP: return XGU_STENCIL_OP_KEEP;
   default:
     unimplemented("%d", op);
     assert(false);
@@ -1116,7 +1235,6 @@ static void setup_matrices() {
 
     p = xgu_set_skin_mode(p, XGU_SKIN_MODE_OFF);
     p = xgu_set_normalization_enable(p, false);
-    p = xgu_set_lighting_enable(p, false);
 
 
 
@@ -1132,9 +1250,8 @@ static void setup_matrices() {
     // Update matrices
 
     //FIXME: Keep dirty bits
-unimplemented(); //FIXME:    const
-float* matrix_p_now = &matrix_p[matrix_p_slot * 4*4];
-    const float* matrix_mv_now = &matrix_mv[matrix_mv_slot * 4*4];
+    float* matrix_p_now = &matrix_p[matrix_p_slot * 4*4];
+    float* matrix_mv_now = &matrix_mv[matrix_mv_slot * 4*4];
 
 
 #if 0
@@ -1157,18 +1274,10 @@ debugPrint("\ndraw:\n");
 
 
 
-  if (true) {
-    float max_z = 0xFFFFFF;
-    float m[4*4] = {
-      320.0f,    0.0f, 0.0f, 0.0f,
-        0.0f, -240.0f, 0.0f, 0.0f,
-        0.0f,    0.0f, max_z / 2.0f, 0.0f,
-      320.0f,  240.0f, max_z / 2.0f, 1.0f
-    };
-    float t[4*4];
-    memcpy(t, matrix_p_now, sizeof(t));
-    matmul4(matrix_p_now, m, t);
-  }
+  float t[4*4];
+  memcpy(t, matrix_p_now, sizeof(t));
+  matmul4(matrix_p_now, viewport_matrix, t);
+
 
 
 #if 1
@@ -1219,12 +1328,191 @@ TRANSPOSE(matrix_mv_now)
   p = pb_begin();
   p = xgu_set_transform_execution_mode(p, XGU_FIXED, XGU_RANGE_MODE_PRIVATE);
   //FIXME: p = xgu_set_fog_enable(p, false);
+
+  //FIXME: Probably should include the viewort matrix
   p = xgu_set_projection_matrix(p, matrix_p_now); //FIXME: Unused in XQEMU
+
   p = xgu_set_composite_matrix(p, matrix_c_now); //FIXME: Always used in XQEMU?
+
+  for(int i = 0; i < XGU_WEIGHT_COUNT; i++) {
+#if 1
+      // Only required if skinning is enabled?
+      transposeMatrix(t, matrix_mv_now);
+      p = xgu_set_model_view_matrix(p, i, t); //FIXME: Not sure when used?
+#endif
+#if 1
+      // Required for lighting
+
+      invert(t, matrix_mv_now); //FIXME: This is affected if we want to normalize normals
+      //transposeMatrix(t, t);
+      //FIXME: mesa only uploads a 4x3 / 3x4 matrix
+      p = xgu_set_inverse_model_view_matrix(p, i, t); //FIXME: Not sure when used?
+#endif
+  }
+
   p = xgu_set_viewport_offset(p, 0.0f, 0.0f, 0.0f, 0.0f);
   p = xgu_set_viewport_scale(p, 1.0f, 1.0f, 1.0f, 1.0f); //FIXME: Ignored?!
   pb_end(p);
 
+}
+
+static void gl_to_xgu_material_source(GLenum mode, XguMaterialSource* emissive, XguMaterialSource* ambient, XguMaterialSource* diffuse, XguMaterialSource* specular) {
+  switch(mode) {
+  case GL_EMISSION:
+    *emissive = XGU_MATERIAL_SOURCE_VERTEX_DIFFUSE;
+    break;
+  case GL_AMBIENT:
+    *ambient = XGU_MATERIAL_SOURCE_VERTEX_DIFFUSE;
+    break;
+  case GL_DIFFUSE:
+    *diffuse = XGU_MATERIAL_SOURCE_VERTEX_DIFFUSE;
+    break;
+  case GL_SPECULAR:
+    *specular = XGU_MATERIAL_SOURCE_VERTEX_DIFFUSE;
+    break;
+  case GL_AMBIENT_AND_DIFFUSE:
+    *ambient = XGU_MATERIAL_SOURCE_VERTEX_DIFFUSE;
+    *diffuse = XGU_MATERIAL_SOURCE_VERTEX_DIFFUSE;
+    break;
+  default:
+    unimplemented("%d", mode);
+    assert(false);
+    break;
+  }
+}
+
+static void setup_lighting() {
+  XguMaterialSource emissive[2] = { XGU_MATERIAL_SOURCE_DISABLE, XGU_MATERIAL_SOURCE_DISABLE };
+  XguMaterialSource ambient[2]  = { XGU_MATERIAL_SOURCE_DISABLE, XGU_MATERIAL_SOURCE_DISABLE };
+  XguMaterialSource diffuse[2]  = { XGU_MATERIAL_SOURCE_DISABLE, XGU_MATERIAL_SOURCE_DISABLE };
+  XguMaterialSource specular[2] = { XGU_MATERIAL_SOURCE_DISABLE, XGU_MATERIAL_SOURCE_DISABLE };
+
+  if (state.color_material_enabled) {
+    gl_to_xgu_material_source(state.color_material_front, &emissive[0], &ambient[0], &diffuse[0], &specular[0]);
+    gl_to_xgu_material_source(state.color_material_back,  &emissive[1], &ambient[1], &diffuse[1], &specular[1]);
+  }
+
+  uint32_t* p = pb_begin();
+
+  // Note: I don't think GL can do two-sided for this one?
+  p = xgu_set_scene_ambient_color(p,      state.light_model_ambient.r, state.light_model_ambient.g, state.light_model_ambient.b);
+  p = xgu_set_back_scene_ambient_color(p, state.light_model_ambient.r, state.light_model_ambient.g, state.light_model_ambient.b);
+
+  // Note: This sets the color source, not the actual color
+  p = xgu_set_color_material(p, emissive[0], ambient[0], diffuse[0], specular[0],
+                                emissive[1], ambient[1], diffuse[1], specular[1]);
+
+  p = xgu_set_material_emission(p,      state.material[0].emission.r, state.material[0].emission.g, state.material[0].emission.b);
+  p = xgu_set_back_material_emission(p, state.material[1].emission.r, state.material[1].emission.g, state.material[1].emission.b);
+
+  unimplemented(); //FIXME: What about state.material[#].ambient
+  unimplemented(); //FIXME: What about state.material[#].diffuse
+  unimplemented(); //FIXME: What about state.material[#].specular
+
+  //FIXME: How does this contribute?
+  float material_alpha[2] = { 1.0f, 1.0f };
+  p = xgu_set_material_alpha(p,      material_alpha[0]);
+  p = xgu_set_back_material_alpha(p, material_alpha[1]);
+
+  //FIXME: When to do this?
+  bool specular_enabled = false;
+  p = xgu_set_specular_enable(p, specular_enabled);
+
+  XguLightMask mask[8];
+  for(int i = 0; i < 8; i++) {
+      mask[i] = XGU_LMASK_OFF;
+  }
+  assert(GL_MAX_LIGHTS <= 8);
+  for(int i = 0; i < GL_MAX_LIGHTS; i++) {
+    Light* l = &state.lights[i];
+    if (!l->enabled) {
+      continue;
+    }
+
+    if (l->is_dir) {
+      mask[i] = XGU_LMASK_INFINITE;
+      //printf("directional light\n");
+
+      XguVec3 v = { l->position.x, l->position.y, l->position.z };
+      //printf("light-dir: %f %f %f\n", v.x, v.y, v.z);
+      p = xgu_set_light_infinite_direction(p, i, v);
+
+    } else {
+      if (l->spot_cutoff == 180.0f) {
+        mask[i] = XGU_LMASK_LOCAL;
+        //printf("point light\n");
+      } else {
+        mask[i] = XGU_LMASK_SPOT;
+        //printf("spot light\n");
+      }
+
+      {
+        XguVec3 v = { l->position.x, l->position.y, l->position.z };
+        p = xgu_set_light_local_position(p, i, v);
+      }
+
+      p = xgu_set_light_local_attenuation(p, i, l->constant_attenuation, l->linear_attenuation, l->quadratic_attenuation);
+
+      pb_end(p);
+
+      XguVec3 direction = {
+        l->spot_direction.x,
+        l->spot_direction.y,
+        l->spot_direction.z
+      };
+      _normalize(&direction.x);
+#if 0
+      //FIXME: Do cos outside of function?
+      float theta = 0.0f;
+      float phi = l->spot_cutoff / 180.0f * M_PI;
+      float falloff = 1.0f;
+      // D3D direction is flipped
+      direction.x *= -1.0f;
+      direction.y *= -1.0f;
+      direction.z *= -1.0f;
+      xgux_set_light_spot_d3d(i, theta, phi, falloff, direction);
+#else
+      //FIXME: Do cos inside the function?
+      float cutoff = l->spot_cutoff / 180.0f * M_PI; //FIXME: Accept values in degree to be closer to GL?
+      xgux_set_light_spot_gl(i, l->spot_exponent, cutoff, direction);
+#endif
+      p = pb_begin();
+    }
+
+    p = xgu_set_light_diffuse_color(p, i, l->diffuse.r, l->diffuse.g, l->diffuse.b);
+    p = xgu_set_back_light_diffuse_color(p, i, l->diffuse.r, l->diffuse.g, l->diffuse.b);
+
+    // We'd be incorrectly mixing colors in the shader, so it's too bright.
+    // Hence, we disable some lights for now.
+    //FIXME: Do proper mixing in shader.
+#if 1
+    p = xgu_set_light_ambient_color(p, i, l->ambient.r, l->ambient.g, l->ambient.b);
+    p = xgu_set_back_light_ambient_color(p, i, l->ambient.r, l->ambient.g, l->ambient.b);
+
+    p = xgu_set_light_specular_color(p, i, l->specular.r, l->specular.g, l->specular.b);
+    p = xgu_set_back_light_specular_color(p, i, l->specular.r, l->specular.g, l->specular.b);
+#else
+    p = xgu_set_light_ambient_color(p, i, 0,0,0);
+    p = xgu_set_back_light_ambient_color(p, i, 0,0,0);
+
+    p = xgu_set_light_specular_color(p, i, 0,0,0);
+    p = xgu_set_back_light_specular_color(p, i, 0,0,0);
+#endif
+  }
+  p = xgu_set_light_enable_mask(p, mask[0],
+                                   mask[1],
+                                   mask[2],
+                                   mask[3],
+                                   mask[4],
+                                   mask[5],
+                                   mask[6],
+                                   mask[7]);
+
+  pb_end(p);
+
+  // Set material
+  xgux_set_specular_gl(state.material[0].shininess);
+  xgux_set_back_specular_gl(state.material[1].shininess);
 }
 
 static void prepare_drawing() {
@@ -1253,6 +1541,17 @@ static void prepare_drawing() {
 
   // Set up all matrices etc.
   setup_matrices();
+
+  // Setup lighting
+#if 1
+  setup_lighting();
+#else
+  {
+    uint32_t* p = pb_begin();
+    p = xgu_set_lighting_enable(p, false);
+    pb_end(p);
+  }
+#endif
 
   // Setup textures
   setup_textures();
@@ -2176,6 +2475,18 @@ GL_API void GL_APIENTRY glReadPixels (GLint x, GLint y, GLsizei width, GLsizei h
 // Lighting
 GL_API void GL_APIENTRY glLightModelf (GLenum pname, GLfloat param) {
   switch(pname) {
+  case GL_LIGHT_MODEL_TWO_SIDE:
+    //FIXME: Why is this never called by neverball?
+    uint32_t* p = pb_begin();
+    p = xgu_set_two_side_light_enable(p, (bool)param);
+    pb_end(p);
+    break;
+  case GL_LIGHT_MODEL_LOCAL_VIEWER:
+    unimplemented(); //FIXME: Not provided by XGU yet
+    //uint32_t* p = pb_begin();
+    //p = xgu_set_local_viewer_enable(p, (bool)param);
+    //pb_end(p);
+    break;
   default:
     unimplemented("%d", pname);
     assert(false);
@@ -2186,9 +2497,11 @@ GL_API void GL_APIENTRY glLightModelf (GLenum pname, GLfloat param) {
 GL_API void GL_APIENTRY glLightModelfv (GLenum pname, const GLfloat *params) {
   switch(pname) {
   case GL_LIGHT_MODEL_AMBIENT:
-    unimplemented("%d", pname); //FIXME: !!!
+    state.light_model_ambient.r = params[0];
+    state.light_model_ambient.g = params[1];
+    state.light_model_ambient.b = params[2];
+    state.light_model_ambient.a = params[3];
     break;
-//#define GL_LIGHT_MODEL_TWO_SIDE 10032:
   default:
     unimplemented("%d", pname);
     assert(false);
@@ -2197,21 +2510,62 @@ GL_API void GL_APIENTRY glLightModelfv (GLenum pname, const GLfloat *params) {
 }
 
 GL_API void GL_APIENTRY glLightfv (GLenum light, GLenum pname, const GLfloat *params) {
-  assert(light >= GL_LIGHT0);
   unsigned int light_index = light - GL_LIGHT0;
-  assert(light_index < 4); //FIXME: Not sure how many lights Xbox has; there's probably some constant we can use
+  assert(light_index < GL_MAX_LIGHTS); //FIXME: Not sure how many lights Xbox has; there's probably some constant we can use
+  Light* l = &state.lights[light_index];
+  const float* modelViewMatrix = &matrix_mv[matrix_mv_slot * 4*4];
   switch(pname) {
   case GL_POSITION:
-    unimplemented("%d", pname); //FIXME: !!!
+    mult_vec4_mat4(&l->position.x, modelViewMatrix, params);
+    l->is_dir = (params[3] == 0.0f);
+    //memcpy(&l->position.x, param, sizeof(l->position));
     break;
   case GL_AMBIENT:
-    unimplemented("%d", pname); //FIXME: !!!
-    break;
-  case GL_DIFFUSE:
-    unimplemented("%d", pname); //FIXME: !!!
+    l->ambient.r = params[0];
+    l->ambient.g = params[1];
+    l->ambient.b = params[2];
+    l->ambient.a = params[3];
     break;
   case GL_SPECULAR:
-    unimplemented("%d", pname); //FIXME: !!!
+    l->specular.r = params[0];
+    l->specular.g = params[1];
+    l->specular.b = params[2];
+    l->specular.a = params[3];
+    break;
+  case GL_DIFFUSE:
+    l->diffuse.r = params[0];
+    l->diffuse.g = params[1];
+    l->diffuse.b = params[2];
+    l->diffuse.a = params[3];
+    break;
+  case GL_SPOT_DIRECTION: {
+    float t[4] = {
+      params[0],
+      params[1],
+      params[2],
+      0.0f
+    };
+    float f[4];
+    mult_vec4_mat4(f, modelViewMatrix, t);
+    l->spot_direction.x = f[0];
+    l->spot_direction.y = f[1];
+    l->spot_direction.z = f[2];
+    break;
+  }
+  case GL_SPOT_CUTOFF:
+    l->spot_cutoff = params[0];
+    break;
+  case GL_SPOT_EXPONENT:
+    l->spot_exponent = params[0];
+    break;
+  case GL_CONSTANT_ATTENUATION:
+    l->constant_attenuation = params[0];
+    break;
+  case GL_LINEAR_ATTENUATION:
+    l->linear_attenuation = params[0];
+    break;
+  case GL_QUADRATIC_ATTENUATION:
+    l->quadratic_attenuation = params[0];
     break;
   default:
     unimplemented("%d", pname);
@@ -2222,6 +2576,30 @@ GL_API void GL_APIENTRY glLightfv (GLenum light, GLenum pname, const GLfloat *pa
 
 
 // Materials
+
+GL_API void GL_APIENTRY glColorMaterial (GLenum face, GLenum mode) {
+
+  if (face == GL_FRONT_AND_BACK) {
+    glColorMaterial(GL_FRONT, mode);
+    glColorMaterial(GL_BACK, mode);
+    return;
+  }
+
+  assert(face == GL_FRONT || face == GL_BACK);
+  switch(face) {
+  case GL_FRONT:
+    state.color_material_front = mode;
+    break;
+  case GL_BACK:
+    state.color_material_back = mode;
+    break;
+  default:
+    unimplemented("%d", face);
+    assert(false);
+    return;
+  }
+}
+
 GL_API void GL_APIENTRY glMaterialfv (GLenum face, GLenum pname, const GLfloat *params) {
 
   if (face == GL_FRONT_AND_BACK) {
@@ -2230,22 +2608,41 @@ GL_API void GL_APIENTRY glMaterialfv (GLenum face, GLenum pname, const GLfloat *
     return;
   }
 
+  if (pname == GL_AMBIENT_AND_DIFFUSE) {
+    glMaterialfv(face, GL_AMBIENT, params);
+    glMaterialfv(face, GL_DIFFUSE, params);
+    return;
+  }
+
   assert(face == GL_FRONT || face == GL_BACK);
+  unsigned int face_index = (face == GL_FRONT) ? 0 : 1;
   switch(pname) {
   case GL_SHININESS:
-    unimplemented("%d", pname); //FIXME: !!!
+    state.material[face_index].shininess = params[0];
     break;
   case GL_EMISSION:
-    unimplemented("%d", pname); //FIXME: !!!
+    state.material[face_index].emission.r = params[0];
+    state.material[face_index].emission.g = params[1];
+    state.material[face_index].emission.b = params[2];
+    state.material[face_index].emission.a = params[3];
     break;
   case GL_AMBIENT:
-    unimplemented("%d", pname); //FIXME: !!!
+    state.material[face_index].ambient.r = params[0];
+    state.material[face_index].ambient.g = params[1];
+    state.material[face_index].ambient.b = params[2];
+    state.material[face_index].ambient.a = params[3];
     break;
   case GL_DIFFUSE:
-    unimplemented("%d", pname); //FIXME: !!!
+    state.material[face_index].diffuse.r = params[0];
+    state.material[face_index].diffuse.g = params[1];
+    state.material[face_index].diffuse.b = params[2];
+    state.material[face_index].diffuse.a = params[3];
     break;
   case GL_SPECULAR:
-    unimplemented("%d", pname); //FIXME: !!!
+    state.material[face_index].specular.r = params[0];
+    state.material[face_index].specular.g = params[1];
+    state.material[face_index].specular.b = params[2];
+    state.material[face_index].specular.a = params[3];
     break;
   default:
     unimplemented("%d", pname);
@@ -2407,7 +2804,7 @@ __attribute__((constructor)) static void setup_xbox(void) {
   }
 
   // Show framebuffer, not debug-screen
-#if 1
+#if 0
   pb_show_front_screen();
 #else
   pb_show_debug_screen();
@@ -2450,9 +2847,110 @@ __attribute__((constructor)) static void setup_xbox(void) {
   debugPrint("\n\n");
   debugPrint("\n\n");
   debugPrint("\n\n");
+  debugPrint("\n\n");
+  debugPrint("\n\n");
+  debugPrint("\n\n");
+  debugPrint("\n\n");
 
   //FIXME: Bump GPU in right state?
+  uint32_t* p = pb_begin();
+  uint32_t control0 = 0;
+#define NV097_SET_CONTROL0_TEXTUREPERSPECTIVE 0x100000
+  control0 |= NV097_SET_CONTROL0_TEXTUREPERSPECTIVE;
+  control0 |= NV097_SET_CONTROL0_STENCIL_WRITE_ENABLE;
+
+  float max_z = 0xFFFFFF;
+#if 0
+  // W-buffer
+  p=pb_push1(p,NV097_SET_ZMIN_MAX_CONTROL,0); //CULL_NEAR_FAR_EN_FALSE | ZCLAMP_EN_CULL | CULL_IGNORE_W_FALSE
+
+  float w_far = 1.0f;
+  float f = max_z / w_far;
+
+  //FIXME: Does not work yet
+
+  float tmp[4*4] = {
+      320.0f*f,      0.0f,           0.0f, 0.0f,
+        0.0f,   -240.0f*f,           0.0f, 0.0f,
+        0.0f,        0.0f, max_z / 2.0f*f, 0.0f,
+      320.0f*f,  240.0f*f, max_z / 2.0f*f,    f,
+  };
+
+  control0 |= NV097_SET_CONTROL0_Z_PERSPECTIVE_ENABLE;
+
+#else
+  // Z-buffer
+  p=pb_push1(p,NV097_SET_ZMIN_MAX_CONTROL,1); //CULL_NEAR_FAR_EN_TRUE | ZCLAMP_EN_CULL | CULL_IGNORE_W_FALSE
+
+  float tmp[4*4] = {
+      320.0f,    0.0f,         0.0f, 0.0f,
+        0.0f, -240.0f,         0.0f, 0.0f,
+        0.0f,    0.0f, max_z / 2.0f, 0.0f,
+      320.0f,  240.0f, max_z / 2.0f, 1.0f,
+  };
+  memcpy(viewport_matrix, tmp, sizeof(tmp));
+
+#endif
+  //control0 |= NV097_SET_CONTROL0_Z_FORMAT; // Float if present; fixed otherwise
+  p = pb_push1(p, NV097_SET_CONTROL0, control0);
+  pb_end(p);
+
+
+  // Set up some defaults
+  glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+  //FIXME: backport these from nv2a-re:
+  //glClearDepth(1.0);
+  //glClearStencil(0);
+
+  glDisable(GL_STENCIL_TEST);
+  //FIXME: backport this from nv2a-re:
+  //glStencilMask(~0);
+  glStencilFunc(GL_ALWAYS, 0, ~0);
+  glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+
+  glDisable(GL_DEPTH_TEST);
+  glDepthFunc(GL_LESS);
+
+  glDisable(GL_NORMALIZE);
+
+  glMatrixMode(GL_MODELVIEW);
+
+  glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+
+  glDisable(GL_LIGHTING);
+  { float f[] = { 0.2f, 0.2f, 0.2f, 1.0f }; glLightModelfv(GL_LIGHT_MODEL_AMBIENT, f); }
+
+  { float f[] = { 0.2f, 0.2f, 0.2f, 1.0f }; glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, f); }
+  { float f[] = { 0.8f, 0.8f, 0.8f, 1.0f }; glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, f); }
+  { float f[] = { 0.0f, 0.0f, 0.0f, 1.0f }; glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, f); }
+  { float f[] = { 0.0f, 0.0f, 0.0f, 1.0f }; glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, f); }
+  { float f[] = { 0.0f }; glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, f); }
+
+  glLightModelf(GL_LIGHT_MODEL_LOCAL_VIEWER, 0);
+  glLightModelf(GL_LIGHT_MODEL_TWO_SIDE, 0);
+
+  for(int i = 0; i < GL_MAX_LIGHTS; i++) {
+    glDisable(GL_LIGHT0 + i);
+    { float f[] = {0,0,0,1}; glLightfv(GL_LIGHT0 + i, GL_AMBIENT, f); }
+    if (i == 0) {
+      { float f[] = {1,1,1,1}; glLightfv(GL_LIGHT0 + i, GL_DIFFUSE, f); }
+      { float f[] = {1,1,1,1}; glLightfv(GL_LIGHT0 + i, GL_SPECULAR, f); }
+    } else {
+      { float f[] = {0,0,0,1}; glLightfv(GL_LIGHT0 + i, GL_DIFFUSE, f); }
+      { float f[] = {0,0,0,1}; glLightfv(GL_LIGHT0 + i, GL_SPECULAR, f); }
+    }
+    { float f[] = {0,0,1,0}; glLightfv(GL_LIGHT0 + i, GL_POSITION, f); }
+    { float f[] = {0,0,-1}; glLightfv(GL_LIGHT0 + i, GL_SPOT_DIRECTION, f); }
+    { float f[] = {180}; glLightfv(GL_LIGHT0 + i, GL_SPOT_CUTOFF, f); }
+    { float f[] = {0}; glLightfv(GL_LIGHT0 + i, GL_SPOT_EXPONENT, f); }
+    { float f[] = {1}; glLightfv(GL_LIGHT0 + i, GL_CONSTANT_ATTENUATION, f); }
+    { float f[] = {0}; glLightfv(GL_LIGHT0 + i, GL_LINEAR_ATTENUATION, f); }
+    { float f[] = {0}; glLightfv(GL_LIGHT0 + i, GL_QUADRATIC_ATTENUATION, f); }
+  }
 
   glFrontFace(GL_CW);
+  glDisable(GL_COLOR_MATERIAL);
+
+  glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
 
 }
