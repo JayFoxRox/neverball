@@ -1205,16 +1205,16 @@ static void setup_textures() {
     p = xgu_set_texture_matrix(p, i, &matrix_t[i][0]);
 
     pb_end(p);
-
-    // Setup texture shader
-    p = pb_begin();
-    p = pb_push1(p, NV097_SET_SHADER_STAGE_PROGRAM,
-          MASK(NV097_SET_SHADER_STAGE_PROGRAM_STAGE0, shaders[0])
-        | MASK(NV097_SET_SHADER_STAGE_PROGRAM_STAGE1, shaders[1])
-        | MASK(NV097_SET_SHADER_STAGE_PROGRAM_STAGE2, shaders[2])
-        | MASK(NV097_SET_SHADER_STAGE_PROGRAM_STAGE3, shaders[3]));
-    pb_end(p);
   }
+
+  // Setup texture shader
+  p = pb_begin();
+  p = pb_push1(p, NV097_SET_SHADER_STAGE_PROGRAM,
+        MASK(NV097_SET_SHADER_STAGE_PROGRAM_STAGE0, shaders[0])
+      | MASK(NV097_SET_SHADER_STAGE_PROGRAM_STAGE1, shaders[1])
+      | MASK(NV097_SET_SHADER_STAGE_PROGRAM_STAGE2, shaders[2])
+      | MASK(NV097_SET_SHADER_STAGE_PROGRAM_STAGE3, shaders[3]));
+  pb_end(p);
 
 
   // Assert that we handled all clip planes
