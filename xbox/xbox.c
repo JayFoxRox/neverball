@@ -64,9 +64,26 @@ static void mult_vec4_mat4(float* o, const float* m, const float* v) {
 static unsigned int frame = 0; //FIXME: Remove
 static SDL_GameController* g = NULL;
 
-#if 0
 #include <hal/debug.h>
+static void _unimplemented(const char* fmt, ...) {
+  char buf[1024];
+  va_list va;
+  va_start(va, fmt);
+  vsprintf(buf, fmt, va);
+  va_end(va);
+  printf(buf); // Log to disk
+  debugPrint(buf); // Log to display
+}
+#define unimplemented(fmt, ...) { \
+  static bool encountered = false; \
+  if (!encountered) { \
+    _unimplemented("%s (%s:%d) " fmt "\n", __FUNCTION__, __FILE__, __LINE__, __VA_ARGS__); \
+    encountered = true; \
+  } \
+}
 
+
+#if 0
 void debugPrintFloat(float f) {
 #if 0
   //FIXME: pdclib can't do this
@@ -85,22 +102,10 @@ void debugPrintFloat(float f) {
 #endif
 }
 
-
-static void _unimplemented(const char* fmt, ...) {
-  char buf[1024];
-  va_list va;
-  va_start(va, fmt);
-  vsprintf(buf, fmt, va);
-  va_end(va);
-  debugPrint(buf);
-}
-#define unimplemented(fmt, ...) _unimplemented("%s (%s:%d) " fmt "\n", __FUNCTION__, __FILE__, __LINE__, __VA_ARGS__)
-
 #else
 void debugPrintFloat(float f) {}
 #define debugPrintFloat(f) 0
 #define debugPrint(...) 0
-#define unimplemented(fmt, ...) 0
 #endif
 
 // stdlib.h
