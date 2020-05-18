@@ -198,7 +198,9 @@ int gettimeofday(struct timeval *tv, struct timezone *tz) {
 
 static void* AllocateResourceMemory(size_t size) {
 #define MAXRAM 0x03FFAFFF
-  return MmAllocateContiguousMemoryEx(size, 0, MAXRAM, 0, PAGE_READWRITE | PAGE_WRITECOMBINE);
+  void* addr = MmAllocateContiguousMemoryEx(size, 0, MAXRAM, 0, PAGE_READWRITE | PAGE_WRITECOMBINE);
+  assert(addr != NULL);
+  return addr;
 }
 
 static void FreeResourceMemory(void* ptr) {
