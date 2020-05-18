@@ -2830,8 +2830,9 @@ EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers (EGLDisplay dpy, EGLSurface surface
     }
   }
   if (g != NULL) {
-    bool button = SDL_GameControllerGetButton(g, SDL_CONTROLLER_BUTTON_START);
-    if (button) {
+    static bool pressed = true;
+    bool button = SDL_GameControllerGetButton(g, SDL_CONTROLLER_BUTTON_BACK);
+    if (button && !pressed) {
       draw_debug = !draw_debug;
 
       if (draw_debug) {
@@ -2840,8 +2841,8 @@ EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers (EGLDisplay dpy, EGLSurface surface
         pb_show_debug_screen();
       }
 
-      Sleep(200);
     }
+    pressed = button;
   }
 #endif
 
