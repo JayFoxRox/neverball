@@ -1850,8 +1850,6 @@ GL_API void GL_APIENTRY glClear (GLbitfield mask) {
   if (mask & GL_DEPTH_BUFFER_BIT)   { flags |= XGU_CLEAR_Z;       }
   if (mask & GL_STENCIL_BUFFER_BIT) { flags |= XGU_CLEAR_STENCIL; }
 
-  pb_print("Clearing\n");
-
   //FIXME: Store size we used to init
   int width = pb_back_buffer_width();
   int height = pb_back_buffer_height();
@@ -2872,7 +2870,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers (EGLDisplay dpy, EGLSurface surface
   /* Draw some text on the screen */
   static int frame = 0;
   frame++;
-  pb_print("Neverball (frame %d)\n", frame);
+  pb_print("Frame %d\n", frame);
   pb_draw_text_screen();
 
   while(pb_busy()) {
