@@ -732,7 +732,7 @@ static void setup_texenv() {
   uint32_t* p = pb_begin();
 
   //FIXME: This is an assumption on how this should be handled
-  //       The GL ES 1.1 Full spec claism that only texture 0 uses Cp=Cf.
+  //       The GL ES 1.1 Full spec claims that only texture 0 uses Cp=Cf.
   //       However, what if unit 0 is inactive? Cp=Cf? Cp=undefined?
   //       Couldn't find an answer when skimming over spec.
   GLuint rc_previous = _RC_PRIMARY_COLOR;
