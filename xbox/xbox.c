@@ -3043,6 +3043,8 @@ __attribute__((constructor)) static void setup_xbox(void) {
 #endif
   //control0 |= NV097_SET_CONTROL0_Z_FORMAT; // Float if present; fixed otherwise
   p = pb_push1(p, NV097_SET_CONTROL0, control0);
+  p = xgu_set_clip_min(p, (float)0x000000);
+  p = xgu_set_clip_max(p, (float)0xFFFFFF);
   pb_end(p);
 
 
