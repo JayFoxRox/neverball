@@ -425,11 +425,23 @@ static State state = {
   .texture_binding_2d = { 0, 0, 0, 0 }
 };
 
+typedef struct {
+  bool enabled;
+  float x;
+  float y;
+  float z;
+  float w;
+} ClipPlane;
+static ClipPlane clip_planes[3]; //FIXME: No more needed for neverball
+
 #include "matrix.h"
 
 
 static uint32_t* set_enabled(uint32_t* p, GLenum cap, bool enabled) {
   switch(cap) {
+  case GL_CLIP_PLANE0 ... GL_CLIP_PLANE0+3-1: //FIXME: Find right GL constant
+    clip_planes[cap - GL_CLIP_PLANE0].enabled = enabled;
+    break;
   case GL_TEXTURE_GEN_S:
     state.texgen_s_enabled[active_texture] = enabled;
     break;
@@ -975,14 +987,7 @@ static unsigned int* matrix_slot = &matrix_mv_slot;
 static float* matrix = &matrix_mv[0];
 static GLenum matrix_mode = GL_MODELVIEW;
 
-typedef struct {
-  bool enabled;
-  float x;
-  float y;
-  float z;
-  float w;
-} ClipPlane;
-static ClipPlane clip_planes[3]; //FIXME: No more needed for neverball
+
 
 
 static void print_attrib(XguVertexArray array, Attrib* attrib, unsigned int start, unsigned int count, bool submit) {
@@ -2420,7 +2425,7 @@ GL_API void GL_APIENTRY glClipPlanef (GLenum p, const GLfloat *eqn) {
   float v[4];
   float m[4*4];
   bool ret = invert(m, &matrix_mv[matrix_mv_slot * 4*4]);
-  unimplemented(); //FIXME: Multiply eqn by m to get the v
+  mult_vec4_mat4(v, m, eqn); //FIXME: Multiply eqn by m to get the v
 
   clip_plane->x = v[0];
   clip_plane->y = v[1];
