@@ -1186,18 +1186,24 @@ static void setup_textures() {
     unsigned int dimensionality = 2;
 
     unsigned int context_dma = 2; //FIXME: Which one did pbkit use?
-    bool border = false;
+    XguBorderSrc border = XGU_SOURCE_COLOR;
+
+    unsigned int mipmap_levels = 1;
+    unsigned int min_lod = 0;
+    unsigned int max_lod = 0;
+    unsigned int lod_bias = 0;
+
     p = xgu_set_texture_offset(p, i, (uintptr_t)tx->data & 0x03ffffff);
     p = xgu_set_texture_format(p, i, context_dma, cubemap_enable, border, dimensionality,
-                                     gl_to_xgu_texture_format(tx->internal_base_format), 1,
+                                     gl_to_xgu_texture_format(tx->internal_base_format), mipmap_levels,
                                      tx->width_shift,tx->height_shift,0);
     p = xgu_set_texture_address(p, i, gl_to_xgu_texture_address(tx->wrap_s), false,
                                       gl_to_xgu_texture_address(tx->wrap_t), false,
                                       XGU_CLAMP_TO_EDGE, false,
                                       false);
-    p = xgu_set_texture_control0(p, i, true, 0, 0);
+    p = xgu_set_texture_control0(p, i, true, min_lod, max_lod);
     p = xgu_set_texture_control1(p, i, tx->pitch);
-    p = xgu_set_texture_filter(p, i, 0, XGU_TEXTURE_CONVOLUTION_QUINCUNX,
+    p = xgu_set_texture_filter(p, i, lod_bias, XGU_TEXTURE_CONVOLUTION_QUINCUNX,
                                         gl_to_xgu_texture_filter(tx->min_filter),
                                         gl_to_xgu_texture_filter(tx->mag_filter),
                                         false, false, false, false);
