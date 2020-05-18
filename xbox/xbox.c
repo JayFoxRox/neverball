@@ -510,8 +510,8 @@ static XguPrimitiveType gl_to_xgu_primitive_type(GLenum mode) {
 }
 
 typedef unsigned int XguTextureFilter;
-#define XGU_TEXTURE_FILTER_LINEAR 4 //FIXME: Shitty workaround for XGU
-#define XGU_TEXTURE_FILTER_NEAREST XGU_TEXTURE_FILTER_LINEAR //FIXME: Shitty workaround for XGU
+#define XGU_TEXTURE_FILTER_LINEAR 2 //FIXME: Shitty workaround for XGU
+#define XGU_TEXTURE_FILTER_NEAREST 1 //FIXME: Shitty workaround for XGU
 
 static XguTextureFilter gl_to_xgu_texture_filter(GLenum filter) {
   switch(filter) {
