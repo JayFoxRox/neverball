@@ -16,6 +16,12 @@ static float _max(float a, float b) {
   return (a > b) ? a : b;
 }
 
+static void _mul3(float* v, const float* a, const float* b) {
+  v[0] = a[0]*b[0];
+  v[1] = a[1]*b[1];
+  v[2] = a[2]*b[2];
+}
+
 static float _dot3(const float* a, const float* b) {
   return a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
 }
@@ -1360,19 +1366,33 @@ static void gl_to_xgu_material_source(GLenum mode, XguMaterialSource* emissive, 
   switch(mode) {
   case GL_EMISSION:
     *emissive = XGU_MATERIAL_SOURCE_VERTEX_DIFFUSE;
+    *ambient = XGU_MATERIAL_SOURCE_DISABLE;
+    *diffuse = XGU_MATERIAL_SOURCE_DISABLE;
+    *specular = XGU_MATERIAL_SOURCE_DISABLE;
     break;
   case GL_AMBIENT:
+    *emissive = XGU_MATERIAL_SOURCE_DISABLE;
     *ambient = XGU_MATERIAL_SOURCE_VERTEX_DIFFUSE;
+    *diffuse = XGU_MATERIAL_SOURCE_DISABLE;
+    *specular = XGU_MATERIAL_SOURCE_DISABLE;
     break;
   case GL_DIFFUSE:
+    *emissive = XGU_MATERIAL_SOURCE_DISABLE;
+    *ambient = XGU_MATERIAL_SOURCE_DISABLE;
     *diffuse = XGU_MATERIAL_SOURCE_VERTEX_DIFFUSE;
+    *specular = XGU_MATERIAL_SOURCE_DISABLE;
     break;
   case GL_SPECULAR:
+    *emissive = XGU_MATERIAL_SOURCE_DISABLE;
+    *ambient = XGU_MATERIAL_SOURCE_DISABLE;
+    *diffuse = XGU_MATERIAL_SOURCE_DISABLE;
     *specular = XGU_MATERIAL_SOURCE_VERTEX_DIFFUSE;
     break;
   case GL_AMBIENT_AND_DIFFUSE:
+    *emissive = XGU_MATERIAL_SOURCE_DISABLE;
     *ambient = XGU_MATERIAL_SOURCE_VERTEX_DIFFUSE;
     *diffuse = XGU_MATERIAL_SOURCE_VERTEX_DIFFUSE;
+    *specular = XGU_MATERIAL_SOURCE_DISABLE;
     break;
   default:
     unimplemented("%d", mode);
@@ -1382,41 +1402,122 @@ static void gl_to_xgu_material_source(GLenum mode, XguMaterialSource* emissive, 
 }
 
 static void setup_lighting() {
-  XguMaterialSource emissive[2] = { XGU_MATERIAL_SOURCE_DISABLE, XGU_MATERIAL_SOURCE_DISABLE };
-  XguMaterialSource ambient[2]  = { XGU_MATERIAL_SOURCE_DISABLE, XGU_MATERIAL_SOURCE_DISABLE };
-  XguMaterialSource diffuse[2]  = { XGU_MATERIAL_SOURCE_DISABLE, XGU_MATERIAL_SOURCE_DISABLE };
-  XguMaterialSource specular[2] = { XGU_MATERIAL_SOURCE_DISABLE, XGU_MATERIAL_SOURCE_DISABLE };
+  XguMaterialSource emissive_source[2] = { XGU_MATERIAL_SOURCE_DISABLE, XGU_MATERIAL_SOURCE_DISABLE };
+  XguMaterialSource ambient_source[2]  = { XGU_MATERIAL_SOURCE_DISABLE, XGU_MATERIAL_SOURCE_DISABLE };
+  XguMaterialSource diffuse_source[2]  = { XGU_MATERIAL_SOURCE_DISABLE, XGU_MATERIAL_SOURCE_DISABLE };
+  XguMaterialSource specular_source[2] = { XGU_MATERIAL_SOURCE_DISABLE, XGU_MATERIAL_SOURCE_DISABLE };
 
   if (state.color_material_enabled) {
-    gl_to_xgu_material_source(state.color_material_front, &emissive[0], &ambient[0], &diffuse[0], &specular[0]);
-    gl_to_xgu_material_source(state.color_material_back,  &emissive[1], &ambient[1], &diffuse[1], &specular[1]);
+    gl_to_xgu_material_source(state.color_material_front, &emissive_source[0], &ambient_source[0], &diffuse_source[0], &specular_source[0]);
+    gl_to_xgu_material_source(state.color_material_back,  &emissive_source[1], &ambient_source[1], &diffuse_source[1], &specular_source[1]);
   }
 
   uint32_t* p = pb_begin();
 
-  // Note: I don't think GL can do two-sided for this one?
-  p = xgu_set_scene_ambient_color(p,      state.light_model_ambient.r, state.light_model_ambient.g, state.light_model_ambient.b);
-  p = xgu_set_back_scene_ambient_color(p, state.light_model_ambient.r, state.light_model_ambient.g, state.light_model_ambient.b);
-
+  //FIXME: What if only one-sided lighting is enabled? Will it still use <property>[1]?
   // Note: This sets the color source, not the actual color
-  p = xgu_set_color_material(p, emissive[0], ambient[0], diffuse[0], specular[0],
-                                emissive[1], ambient[1], diffuse[1], specular[1]);
+  p = xgu_set_color_material(p, emissive_source[0], ambient_source[0], diffuse_source[0], specular_source[0],
+                                emissive_source[1], ambient_source[1], diffuse_source[1], specular_source[1]);
 
-  p = xgu_set_material_emission(p,      state.material[0].emission.r, state.material[0].emission.g, state.material[0].emission.b);
-  p = xgu_set_back_material_emission(p, state.material[1].emission.r, state.material[1].emission.g, state.material[1].emission.b);
+  int sides = 2;
 
-  unimplemented(); //FIXME: What about state.material[#].ambient
-  unimplemented(); //FIXME: What about state.material[#].diffuse
-  unimplemented(); //FIXME: What about state.material[#].specular
+  // Reverse engineered from Futurama PAL
+  for(int side = 0; side < sides; side++) {
+    float f1[3];
+    float f2[3];
+    if (ambient_source[side] != XGU_MATERIAL_SOURCE_DISABLE) {
+      // Ambient = Vertex
+      // Emission = ???
+
+      f1[0] = state.material[side].emission.r;
+      f1[1] = state.material[side].emission.g;
+      f1[2] = state.material[side].emission.b;
+
+      // Note: I don't think GL can do two-sided for this one?
+      f2[0] = state.light_model_ambient.r;
+      f2[1] = state.light_model_ambient.g;
+      f2[2] = state.light_model_ambient.b;
+
+      if (emissive_source[side] != XGU_MATERIAL_SOURCE_DISABLE) {
+        // Ambient = Vertex
+        // Emission = Vertex
+
+        //FIXME: = f1 + f2 * vertex ???
+        //       = material.emission + light_model.ambient * vertex
+
+        //FIXME: What about replacing the emission?
+        //       Shouldn't this be something like:
+        //       = vertex + light_model.ambient * vertex ?
+        //       Will the GPU automatically use vertex instead of f1?
+        //       Is this an invalid GPU state? (GL API makes this impossible)
+        assert(false); 
+                       
+      } else {
+        // Ambient = Vertex
+        // Emission = Material
+
+        // Confusingly:
+        // - f1 = SCENE_AMBIENT_COLOR [but used for material.emission here]
+        // - f2 = MATERIAL_EMISSION [but used for light_model.ambient here]
+
+        //FIXME: = f1 + f2 * vertex ???
+        //       = material.emission + light_model.ambient * vertex
+      }
+    } else if (emissive_source[side] != XGU_MATERIAL_SOURCE_DISABLE) {
+      assert(ambient_source[side] == XGU_MATERIAL_SOURCE_DISABLE);
+      // Ambient = Material
+      // Emission = Vertex
+
+      f1[0] = state.light_model_ambient.r * state.material[side].ambient.r;
+      f1[1] = state.light_model_ambient.g * state.material[side].ambient.g;
+      f1[2] = state.light_model_ambient.b * state.material[side].ambient.b;
+
+      f2[0] = 1.0f;
+      f2[1] = 1.0f;
+      f2[2] = 1.0f;
+
+      //FIXME: = f1 + f2 * vertex ???
+      //       = (light_model.ambient * material.ambient) + vertex ???
+    } else {
+      assert(ambient_source[side] == XGU_MATERIAL_SOURCE_DISABLE);
+      assert(emissive_source[side] == XGU_MATERIAL_SOURCE_DISABLE);
+      // Ambient = Material
+      // Emission = Material
+
+      f1[0] = state.light_model_ambient.r * state.material[side].ambient.r + state.material[side].emission.r;
+      f1[1] = state.light_model_ambient.g * state.material[side].ambient.g + state.material[side].emission.g;
+      f1[2] = state.light_model_ambient.b * state.material[side].ambient.b + state.material[side].emission.b;
+
+      f2[0] = 0.0f;
+      f2[1] = 0.0f;
+      f2[2] = 0.0f;
+
+      //FIXME: = f1 + f2 * vertex ???
+      //       = (light_model.ambient * material.ambient + material.emission) + 0 ???
+    }
+    if (side == 0) {
+      p = xgu_set_scene_ambient_color(p, f1[0], f1[1], f1[2]);
+      p = xgu_set_material_emission(p,   f2[0], f2[1], f2[2]);
+    } else {
+      p = xgu_set_back_scene_ambient_color(p, f1[0], f1[1], f1[2]);
+      p = xgu_set_back_material_emission(p,   f2[0], f2[1], f2[2]);
+    }
+  }
 
   //FIXME: How does this contribute?
-  float material_alpha[2] = { 1.0f, 1.0f };
-  p = xgu_set_material_alpha(p,      material_alpha[0]);
-  p = xgu_set_back_material_alpha(p, material_alpha[1]);
+  p = xgu_set_material_alpha(p,      state.material[0].diffuse.a);
+  p = xgu_set_back_material_alpha(p, state.material[1].diffuse.a);
 
   //FIXME: When to do this?
   bool specular_enabled = false;
   p = xgu_set_specular_enable(p, specular_enabled);
+
+  bool separate_specular = false; //FIXME: Respect GL
+  bool localeye = false; //FIXME: Respect GL
+  XguSout sout = XGU_SOUT_ZERO_OUT; //FIXME: What is this?
+                                    //       - D3D VP always uses PASSTHROUGH?
+                                    //       - D3D FFP always uses ZERO_OUT?
+  p = xgu_set_light_control(p, separate_specular, localeye, sout);
 
   XguLightMask mask[8];
   for(int i = 0; i < 8; i++) {
@@ -1479,19 +1580,52 @@ static void setup_lighting() {
       p = pb_begin();
     }
 
-    p = xgu_set_light_diffuse_color(p, i, l->diffuse.r, l->diffuse.g, l->diffuse.b);
-    p = xgu_set_back_light_diffuse_color(p, i, l->diffuse.r, l->diffuse.g, l->diffuse.b);
 
-    // We'd be incorrectly mixing colors in the shader, so it's too bright.
-    // Hence, we disable some lights for now.
-    //FIXME: Do proper mixing in shader.
+
+    for(int side = 0; side < sides; side++) {
+      float f[3];
+
+      if (diffuse_source[side] == XGU_MATERIAL_SOURCE_DISABLE) {
+        _mul3(f, &l->diffuse, &state.material[side].diffuse);
+      } else {
+        memcpy(f, &l->diffuse, sizeof(f));
+      }
+      if (side == 0) {
+        p = xgu_set_light_diffuse_color(p, i, f[0], f[1], f[2]);
+      } else {
+        p = xgu_set_back_light_diffuse_color(p, i, f[0], f[1], f[2]);
+      }
+
+      // We'd be incorrectly mixing colors in the shader, so it's too bright?
+      // Hence, we disable some lights for now.
+      //FIXME: Do proper mixing in shader.
 #if 1
-    p = xgu_set_light_ambient_color(p, i, l->ambient.r, l->ambient.g, l->ambient.b);
-    p = xgu_set_back_light_ambient_color(p, i, l->ambient.r, l->ambient.g, l->ambient.b);
+      if (ambient_source[side] == XGU_MATERIAL_SOURCE_DISABLE) {
+        _mul3(f, &l->ambient, &state.material[side].ambient);
+      } else {
+        memcpy(f, &l->ambient, sizeof(f));
+      }
+      if (side == 0) {
+        p = xgu_set_light_ambient_color(p, i, f[0], f[1], f[2]);
+      } else {
+        p = xgu_set_back_light_ambient_color(p, i, f[0], f[1], f[2]);
+      }
 
-    p = xgu_set_light_specular_color(p, i, l->specular.r, l->specular.g, l->specular.b);
-    p = xgu_set_back_light_specular_color(p, i, l->specular.r, l->specular.g, l->specular.b);
+      if (specular_source[side] == XGU_MATERIAL_SOURCE_DISABLE) {
+        _mul3(f, &l->specular, &state.material[side].specular);
+      } else {
+        memcpy(f, &l->specular, sizeof(f));
+      }
+      if (side == 0) {
+        p = xgu_set_light_specular_color(p, i, f[0], f[1], f[2]);
+      } else {
+        p = xgu_set_back_light_specular_color(p, i, f[0], f[1], f[2]);
+      }
+    }
+
 #else
+    }
+
     p = xgu_set_light_ambient_color(p, i, 0,0,0);
     p = xgu_set_back_light_ambient_color(p, i, 0,0,0);
 
@@ -2949,8 +3083,8 @@ __attribute__((constructor)) static void setup_xbox(void) {
   }
 
   glFrontFace(GL_CW);
-  glDisable(GL_COLOR_MATERIAL);
 
+  glDisable(GL_COLOR_MATERIAL);
   glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
 
 }
