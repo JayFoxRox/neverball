@@ -545,6 +545,9 @@ static XguTextureFilter gl_to_xgu_texture_filter(GLenum filter) {
 static XguStencilOp gl_to_xgu_stencil_op(GLenum op) {
   switch(op) {
   case GL_KEEP: return XGU_STENCIL_OP_KEEP;
+  case GL_REPLACE: return XGU_STENCIL_OP_REPLACE;
+//FIXME:  case GL_INCR: return XGU_STENCIL_OP_INCR;
+//FIXME:  case GL_DECR: return XGU_STENCIL_OP_DECR;
   default:
     unimplemented("%d", op);
     assert(false);
