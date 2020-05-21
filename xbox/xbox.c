@@ -2891,15 +2891,11 @@ EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers (EGLDisplay dpy, EGLSurface surface
 
   // Prepare next frame
 
-  pb_wait_for_vbl();
+  //pb_wait_for_vbl();
   pb_reset();
   pb_target_back_buffer();
 
   pb_erase_text_screen();
-
-  while(pb_busy()) {
-    /* Wait for completion... */
-  }
 
   return EGL_TRUE;
 }
