@@ -82,6 +82,7 @@ static void _unimplemented(const char* fmt, ...) {
   } \
 }
 
+#define _debugPrint(...) debugPrint(__VA_ARGS__)
 
 #if 0
 void debugPrintFloat(float f) {
@@ -2997,14 +2998,14 @@ __attribute__((constructor)) static void setup_xbox(void) {
   //FIXME: Why is this necessary?
   SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
 
-  debugPrint("\n\n");
-  debugPrint("\n\n");
-  debugPrint("\n\n");
-  debugPrint("\n\n");
-  debugPrint("\n\n");
-  debugPrint("\n\n");
-  debugPrint("\n\n");
-  debugPrint("\n\n");
+  _debugPrint("\n\n");
+  _debugPrint("\n\n");
+  _debugPrint("\n\n");
+  _debugPrint("\n\n");
+  _debugPrint("\n\n");
+//  debugPrint("\n\n");
+//  debugPrint("\n\n");
+//  debugPrint("\n\n");
 
   //FIXME: Bump GPU in right state?
   uint32_t* p = pb_begin();
