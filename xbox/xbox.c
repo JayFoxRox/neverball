@@ -1372,7 +1372,7 @@ TRANSPOSE(matrix_mv_now)
       // Required for lighting
 
       invert(t, matrix_mv_now); //FIXME: This is affected if we want to normalize normals
-      //transposeMatrix(t, t);
+      transposeMatrix(t, t);
       //FIXME: mesa only uploads a 4x3 / 3x4 matrix
       p = xgu_set_inverse_model_view_matrix(p, i, t); //FIXME: Not sure when used?
 #endif
