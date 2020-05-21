@@ -2870,8 +2870,11 @@ EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers (EGLDisplay dpy, EGLSurface surface
 
   /* Draw some text on the screen */
   static int frame = 0;
-  frame++;
-  pb_print("Frame %d\n", frame);
+  frame++;  
+  MM_STATISTICS mem_stats;
+  mem_stats.Length = sizeof(mem_stats);
+  MmQueryStatistics(&mem_stats);
+  pb_print("Frame %d; memory: %dMiB / %dMiB\n", frame, ((mem_stats.TotalPhysicalPages - mem_stats.AvailablePages) * 4) / 1024, (mem_stats.TotalPhysicalPages * 4) / 1024);
   pb_draw_text_screen();
 
   while(pb_busy()) {
