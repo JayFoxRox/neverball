@@ -3049,6 +3049,7 @@ __attribute__((constructor)) static void setup_xbox(void) {
   p = pb_push1(p, NV097_SET_CONTROL0, control0);
   p = xgu_set_clip_min(p, (float)0x000000);
   p = xgu_set_clip_max(p, (float)0xFFFFFF);
+  p = pb_push1(p,NV097_SET_COMPRESS_ZBUFFER_EN,1); //FIXME: Does this work?
   pb_end(p);
 
 
