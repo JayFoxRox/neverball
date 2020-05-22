@@ -1205,12 +1205,12 @@ static void setup_textures() {
                                       XGU_CLAMP_TO_EDGE, false,
                                       false);
     p = xgu_set_texture_control0(p, i, true, min_lod, max_lod);
-    p = xgu_set_texture_control1(p, i, tx->pitch);
+//    p = xgu_set_texture_control1(p, i, 0x800000 /*tx->pitch*/);
     p = xgu_set_texture_filter(p, i, lod_bias, XGU_TEXTURE_CONVOLUTION_QUINCUNX,
                                         gl_to_xgu_texture_filter(tx->min_filter),
                                         gl_to_xgu_texture_filter(tx->mag_filter),
                                         false, false, false, false);
-    p = xgu_set_texture_image_rect(p, i, tx->width, tx->height);
+//    p = xgu_set_texture_image_rect(p, i, 0 /*tx->width*/, 0 /*tx->height*/);
 
 #if 0
     //FIXME: Use NV097_SET_TEXTURE_FORMAT and friends
