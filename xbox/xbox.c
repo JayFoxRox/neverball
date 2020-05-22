@@ -2276,6 +2276,19 @@ GL_API void GL_APIENTRY glClientActiveTexture (GLenum texture) {
 }
 
 GL_API void GL_APIENTRY glDeleteTextures (GLsizei n, const GLuint *textures) {
+  for(int i = 0; i < n; i++) {
+
+    //FIXME: Also ignore non-existing names
+    if (textures[i] == 0) {
+      continue;
+    }
+
+    Texture* texture = objects[textures[i]-1].data;
+    if (texture->data != NULL) {
+      unimplemented(); //FIXME: Assert that the data is no longer used
+      FreeResourceMemory(texture->data);
+    }
+  }
   del_objects(n, textures);
 }
 
