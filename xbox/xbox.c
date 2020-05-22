@@ -1672,6 +1672,12 @@ static void setup_lighting() {
 }
 
 static void prepare_drawing() {
+
+  unimplemented(); //FIXME: Measure length of buffer and resize so we can handle large levels
+                   //       `pb_busy` and `pb_reset` are too expensive.
+  while(pb_busy());
+  pb_reset();
+
   debugPrint("Preparing to draw\n");
 
   //FIXME: Track dirty bits
