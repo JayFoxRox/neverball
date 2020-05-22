@@ -1541,6 +1541,12 @@ static void setup_lighting() {
   XguSout sout = XGU_SOUT_ZERO_OUT; //FIXME: What is this?
                                     //       - D3D VP always uses PASSTHROUGH?
                                     //       - D3D FFP always uses ZERO_OUT?
+  if (SDL_GameControllerGetButton(g, SDL_CONTROLLER_BUTTON_DPAD_LEFT)) {
+    sout = XGU_SOUT_PASSTHROUGH; //FIXME: What is this?
+    pb_print("PT;");
+  } else {
+    pb_print("ZO;");
+  }
   p = xgu_set_light_control(p, separate_specular, localeye, sout);
 
   XguLightMask mask[8];
@@ -1707,10 +1713,11 @@ static void prepare_drawing() {
   setup_matrices();
 
   // Setup lighting
-#if 1
   setup_lighting();
-#else
-  {
+
+#if 1
+  if (SDL_GameControllerGetButton(g, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER)) {
+    pb_print("Lighting disabled\n");
     uint32_t* p = pb_begin();
     p = xgu_set_lighting_enable(p, false);
     pb_end(p);
@@ -1720,8 +1727,10 @@ static void prepare_drawing() {
   // Setup textures
   setup_textures();
 
+debugPrint("texenv setup");
   // Set the register combiner
   setup_texenv();
+debugPrint("debug stuff");
 
 #if 0
   {
@@ -1754,24 +1763,44 @@ static void prepare_drawing() {
   }
 #endif
 
-#if 0
-  {
+#if 1
+  if (SDL_GameControllerGetButton(g, SDL_CONTROLLER_BUTTON_DPAD_RIGHT)) {
+    pb_print("BLEND;\n");
+    uint32_t* p = pb_begin();
+    p = xgu_set_blend_func_sfactor(p, XGU_FACTOR_SRC_ALPHA);
+    p = xgu_set_blend_func_dfactor(p, XGU_FACTOR_ONE_MINUS_SRC_ALPHA);
+    p = xgu_set_alpha_test_enable(p, false);
+    p = xgu_set_blend_enable(p, true);
+    p = pb_push1(p, NV097_SET_COMBINER_SPECULAR_FOG_CW1,
+          MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW1_E_SOURCE, _RC_ZERO)   | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW1_E_ALPHA, 0) | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW1_E_INVERSE, 0)
+        | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW1_F_SOURCE, _RC_ZERO)   | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW1_F_ALPHA, 0) | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW1_F_INVERSE, 0)
+        | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW1_G_SOURCE, _RC_PRIMARY_COLOR) | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW1_G_ALPHA, 1) | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW1_G_INVERSE, 0)
+        | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW1_SPECULAR_CLAMP, 0));
+    pb_end(p);
+  }
+#endif
+
+#if 1
+  if (SDL_GameControllerGetButton(g, SDL_CONTROLLER_BUTTON_DPAD_UP) || SDL_GameControllerGetButton(g, SDL_CONTROLLER_BUTTON_DPAD_DOWN)) {
     // Output selector
-    unsigned int source = _RC_TEXTURE+0;
+    unsigned int source = _RC_PRIMARY_COLOR; //_RC_TEXTURE+0;
+    int alpha = SDL_GameControllerGetButton(g, SDL_CONTROLLER_BUTTON_DPAD_UP) ? 1 : 0;
+    pb_print("%s;", alpha ? "A" : "RGB");
     uint32_t* p = pb_begin();
     p = pb_push1(p, NV097_SET_COMBINER_SPECULAR_FOG_CW0,
           MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW0_A_SOURCE, _RC_ZERO)   | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW0_A_ALPHA, 0) | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW0_A_INVERSE, 0)
         | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW0_B_SOURCE, _RC_ZERO)   | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW0_B_ALPHA, 0) | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW0_B_INVERSE, 0)
         | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW0_C_SOURCE, _RC_ZERO)   | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW0_C_ALPHA, 0) | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW0_C_INVERSE, 0)
-        | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW0_D_SOURCE, source) | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW0_D_ALPHA, 0) | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW0_D_INVERSE, 0));
+        | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW0_D_SOURCE, source) | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW0_D_ALPHA, alpha) | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW0_D_INVERSE, 0));
     p = pb_push1(p, NV097_SET_COMBINER_SPECULAR_FOG_CW1,
           MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW1_E_SOURCE, _RC_ZERO)   | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW1_E_ALPHA, 0) | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW1_E_INVERSE, 0)
         | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW1_F_SOURCE, _RC_ZERO)   | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW1_F_ALPHA, 0) | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW1_F_INVERSE, 0)
-        | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW1_G_SOURCE, source) | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW1_G_ALPHA, 1) | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW1_G_INVERSE, 0)
+        | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW1_G_SOURCE, _RC_ZERO) | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW1_G_ALPHA, 0) | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW1_G_INVERSE, 1)
         | MASK(NV097_SET_COMBINER_SPECULAR_FOG_CW1_SPECULAR_CLAMP, 0));
     pb_end(p);
   }
 #endif
+_debugPrint("gone");
 }
 
 
@@ -2035,6 +2064,7 @@ return; //FIXME: !!!
 
   prepare_drawing();
 
+debugPrint("drawarrays");
   xgux_draw_arrays(gl_to_xgu_primitive_type(mode), first, count);
 
 #if 1
@@ -2062,6 +2092,7 @@ GL_API void GL_APIENTRY glDrawElements (GLenum mode, GLsizei count, GLenum type,
   f = frame;
 
   prepare_drawing();
+debugPrint("elements ");
 
   uintptr_t base;
   if (gl_element_array_buffer == 0) {
