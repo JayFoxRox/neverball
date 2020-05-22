@@ -12,6 +12,8 @@
 
 static float viewport_matrix[4*4];
 
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
+
 static float _max(float a, float b) {
   return (a > b) ? a : b;
 }
@@ -2298,6 +2300,14 @@ GL_API void GL_APIENTRY glDeleteTextures (GLsizei n, const GLuint *textures) {
   del_objects(n, textures);
 }
 
+static void blend_2x2_bytes(unsigned int channels, const uint8_t* src_pixels, uint8_t* dst_pixels, unsigned int x, unsigned int y, size_t src_pitch, size_t dst_pitch) {
+  for(int channel = 0; channel < channels; channel++) {
+    dst_pixels[y * dst_pitch + x*channels + channel] = (src_pixels[(y*2+0) * src_pitch + (x*2+0)*channels + channel] +
+                                                        src_pixels[(y*2+0) * src_pitch + (x*2+1)*channels + channel] +
+                                                        src_pixels[(y*2+1) * src_pitch + (x*2+0)*channels + channel] +
+                                                        src_pixels[(y*2+1) * src_pitch + (x*2+1)*channels + channel]) / 4;
+  }
+}
 
 GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, const void *pixels) {
   assert(target == GL_TEXTURE_2D);
@@ -2355,28 +2365,39 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level, GLint internal
   tx->width = width;
   tx->height = height;
   tx->pitch = width * bpp / 8;
-  size_t size = tx->pitch * tx->height;
   if (tx->data != NULL) {
     //FIXME: Re-use existing buffer if it's a good fit?
     //FIXME: Assert that this memory is no longer used
     FreeResourceMemory(tx->data);
   }
+
+  // Calculate required size for mipmaps
+  unsigned int mip_levels = MAX(tx->width_shift, tx->height_shift) + 1;
+  unsigned int width_shift = tx->width_shift;
+  unsigned int height_shift = tx->height_shift;
+  size_t size = 0;
+  for(unsigned int mip_level = 0; mip_level < mip_levels; mip_level++) {
+    debugPrint("%d %d %d\n", mip_level, width_shift, height_shift);
+    size += (1 << (width_shift + height_shift)) * (bpp / 8);
+    if (width_shift  > 0) { width_shift--;  }
+    if (height_shift > 0) { height_shift--; }
+  }
   tx->data = AllocateResourceMemory(size);
+
+  // Allocate temporary space for generating mipmaps and swizzling source
+  uint8_t* tmp = malloc(tx->width * tx->height * (bpp / 8));
 
   // Copy pixels
   //FIXME: Respect GL pixel packing stuff
-  debugPrint("swizzling\n");
   assert(pixels != NULL);
   if (tx->internal_base_format == GL_RGB) {
     assert(format == GL_RGB);
     assert(type == GL_UNSIGNED_BYTE);
-    uint8_t* tmp = malloc(tx->width * tx->height * 4);
     const uint8_t* src = pixels;
     uint8_t* dst = tmp;
     assert(tx->pitch == tx->width * 4);
     for(int y = 0; y < tx->height; y++) {
       for(int x = 0; x < tx->width; x++) {
-        //FIXME: Can also use different texture format instead probably
         dst[0] = src[2];
         dst[1] = src[1];
         dst[2] = src[0];
@@ -2385,16 +2406,48 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level, GLint internal
         src += 3;
       }
     }
-  debugPrint("1 swizzling..\n");
-    swizzle_rect(tmp, tx->width, tx->height, tx->data, tx->width * 4, 4);
-  debugPrint("1 okay?!\n");
-    free(tmp);
   } else {
-  debugPrint("2 swizzling..\n");
-    swizzle_rect(pixels, tx->width, tx->height, tx->data, tx->pitch, bpp / 8);
-  debugPrint("2 okay?!\n");
+    memcpy(tmp, pixels, tx->width * tx->height * (bpp / 8));
   }
-  debugPrint("swizzling done\n");
+
+  // Generate mipmaps
+  uint8_t* swizzled_pixels = (uint8_t*)tx->data;
+  unsigned int w = 1 << tx->width_shift;
+  unsigned int h = 1 << tx->height_shift;
+  size_t pitch = w * (bpp / 8);
+  unsigned int mip_level = 0;
+  while(true) {
+
+    // Swizzle data
+    _debugPrint("Swizzling %dx%d [pitch %d, %dbpp] (%d / %d)\n", w, h, pitch, bpp, mip_level, mip_levels);
+    swizzle_rect(tmp, w, h, swizzled_pixels, pitch, bpp / 8);
+
+    // Check if there is another mipmap level
+    mip_level++;
+    if (mip_level >= mip_levels) {
+      _debugPrint("Generated all levels!\n");
+      break;
+    }
+
+    // Calculate offset and size of next mipmap level
+    swizzled_pixels += pitch * h;
+    size_t src_pitch = pitch;
+    if (w > 1) { w /= 2; pitch /= 2; }
+    if (h > 1) { h /= 2; }
+
+    // We can run the downscale in place
+    _debugPrint("Downscaling to %dx%d\n", w, h);
+    for(unsigned int y = 0; y < h; y++) {
+      for(unsigned int x = 0; x < w; x++) {
+        blend_2x2_bytes(bpp / 8, tmp, tmp, x, y, src_pitch, pitch);
+      }
+    }
+
+
+
+  }
+
+  free(tmp);
 }
 
 GL_API void GL_APIENTRY glTexParameteri (GLenum target, GLenum pname, GLint param) {
