@@ -1199,8 +1199,8 @@ static void setup_textures() {
     XguBorderSrc border = XGU_SOURCE_COLOR;
 
     unsigned int mipmap_levels = MAX(tx->width_shift, tx->height_shift) + 1;
-    unsigned int min_lod = 2;
-    unsigned int max_lod = 2;
+    unsigned int min_lod = 0;
+    unsigned int max_lod = mipmap_levels - 1;
     unsigned int lod_bias = 0;
 
     p = xgu_set_texture_offset(p, i, (uintptr_t)tx->data & 0x03ffffff);
