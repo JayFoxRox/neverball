@@ -194,6 +194,9 @@ typedef unsigned int GLbitfield;
 
 
 
+// Used in neverball conditionally
+#define GL_GENERATE_MIPMAP_SGIS 25000
+#define GL_LINEAR_MIPMAP_LINEAR 25001
 
 
 

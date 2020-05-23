@@ -530,13 +530,20 @@ static XguPrimitiveType gl_to_xgu_primitive_type(GLenum mode) {
 }
 
 typedef unsigned int XguTextureFilter;
-#define XGU_TEXTURE_FILTER_LINEAR 2 //FIXME: Shitty workaround for XGU
-#define XGU_TEXTURE_FILTER_NEAREST 1 //FIXME: Shitty workaround for XGU
+ //FIXME: Shitty workaround for XGU
+#define XGU_TEXTURE_FILTER_NEAREST 1
+#define XGU_TEXTURE_FILTER_LINEAR 2
+#define XGU_TEXTURE_FILTER_NEAREST_MIPMAP_NEAREST 3
+#define XGU_TEXTURE_FILTER_LINEAR_MIPMAP_NEAREST 4
+#define XGU_TEXTURE_FILTER_NEAREST_MIPMAP_LINEAR 5
+#define XGU_TEXTURE_FILTER_LINEAR_MIPMAP_LINEAR 6
 
 static XguTextureFilter gl_to_xgu_texture_filter(GLenum filter) {
   switch(filter) {
-  case GL_LINEAR:  return XGU_TEXTURE_FILTER_LINEAR;
-  case GL_NEAREST: return XGU_TEXTURE_FILTER_NEAREST;
+  case GL_NEAREST:               return XGU_TEXTURE_FILTER_NEAREST;
+  case GL_LINEAR:                return XGU_TEXTURE_FILTER_LINEAR;
+  case GL_NEAREST_MIPMAP_LINEAR: return XGU_TEXTURE_FILTER_NEAREST_MIPMAP_LINEAR;
+  case GL_LINEAR_MIPMAP_LINEAR:  return XGU_TEXTURE_FILTER_LINEAR_MIPMAP_LINEAR;
   default:
     unimplemented("%d", filter);
     assert(false);
@@ -2442,6 +2449,7 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level, GLint internal
   }
 
   // Generate mipmaps
+  unimplemented(); //FIXME: Make dependent on GL_GENERATE_MIPMAP_SGIS
   uint8_t* swizzled_pixels = (uint8_t*)tx->data;
   unsigned int w = 1 << tx->width_shift;
   unsigned int h = 1 << tx->height_shift;
@@ -2487,6 +2495,9 @@ GL_API void GL_APIENTRY glTexParameteri (GLenum target, GLenum pname, GLint para
   Texture* tx = get_bound_texture(active_texture);
 
   switch(pname) {
+  case GL_GENERATE_MIPMAP_SGIS:
+    unimplemented(); //FIXME: Make this optional (currently assumed true)
+    break;
   case GL_TEXTURE_MIN_FILTER:
     tx->min_filter = param;
     break;
