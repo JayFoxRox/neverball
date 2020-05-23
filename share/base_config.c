@@ -23,7 +23,15 @@
 #include "fs.h"
 
 #ifdef _WIN32
+#ifndef NXDK
 #include <shlobj.h>
+#endif
+#endif
+
+#ifdef NXDK
+#include <hal/debug.h>
+#else
+#define debugPrint(...)
 #endif
 
 /*---------------------------------------------------------------------------*/
@@ -43,7 +51,7 @@ static const char *pick_data_path(const char *arg_data_path)
         return CONFIG_DATA;
 
     SAFECPY(dir, fs_base_dir());
-    SAFECAT(dir, "/");
+    SAFECAT(dir, SEP);
     SAFECAT(dir, CONFIG_DATA);
 
     return dir;
@@ -52,6 +60,7 @@ static const char *pick_data_path(const char *arg_data_path)
 static const char *pick_home_path(void)
 {
 #ifdef _WIN32
+#ifndef NXDK
     static char path[MAX_PATH];
 
     if (SHGetFolderPath(NULL, CSIDL_PERSONAL, NULL, 0, path) == S_OK)
@@ -68,6 +77,10 @@ static const char *pick_home_path(void)
     }
     else
         return fs_base_dir();
+#else
+    //FIXME: Xbox
+    return fs_base_dir();
+#endif
 #else
     const char *path;
 
@@ -88,43 +101,60 @@ void config_paths(const char *arg_data_path)
      */
 
     /* Data directory. */
-
+debugPrint("%s:%d\n", __FILE__, __LINE__);
     data = pick_data_path(arg_data_path);
-
+debugPrint("%s:%d\n", __FILE__, __LINE__);
     fs_add_path_with_archives(data);
-
+debugPrint("%s:%d\n", __FILE__, __LINE__);
     /* User directory. */
 
     home = pick_home_path();
-    user = concat_string(home, "/", CONFIG_USER, NULL);
+debugPrint("%s:%d\n", __FILE__, __LINE__);
+#ifdef NXDK
+    user = concat_string("", "", CONFIG_USER, NULL);
+#else
+    user = concat_string(home, SEP, CONFIG_USER, NULL);
+#endif
 
     /* Set up directory for writing, create if needed. */
-
+debugPrint("%s:%d\n", __FILE__, __LINE__);
     if (!fs_set_write_dir(user))
     {
+debugPrint("%s:%d\n", __FILE__, __LINE__);
         int success = 0;
 
         log_printf("Failure to establish write directory. First run?\n");
-
-        if (fs_set_write_dir(home))
-            if (fs_mkdir(CONFIG_USER))
-                if (fs_set_write_dir(user))
+debugPrint("%s:%d\n", __FILE__, __LINE__);
+        if (fs_set_write_dir(home)) {
+            debugPrint("%s:%d\n", __FILE__, __LINE__);
+            if (fs_mkdir(CONFIG_USER)) {
+debugPrint("%s:%d\n", __FILE__, __LINE__);
+                if (fs_set_write_dir(user)) {
+debugPrint("%s:%d\n", __FILE__, __LINE__);
                     success = 1;
-
+                }
+            }
+        }
+debugPrint("%s:%d\n", __FILE__, __LINE__);
         if (success)
         {
+debugPrint("%s:%d\n", __FILE__, __LINE__);
             log_printf("Write directory established at %s\n", user);
         }
         else
         {
+debugPrint("%s:%d\n", __FILE__, __LINE__);
             log_printf("Write directory not established at %s\n", user);
             fs_set_write_dir(NULL);
+debugPrint("%s:%d\n", __FILE__, __LINE__);
         }
+debugPrint("%s:%d\n", __FILE__, __LINE__);
     }
-
+debugPrint("%s:%d\n", __FILE__, __LINE__);
     fs_add_path_with_archives(user);
-
+debugPrint("%s:%d\n", __FILE__, __LINE__);
     free((void *) user);
+debugPrint("%s:%d\n", __FILE__, __LINE__);
 }
 
 /*---------------------------------------------------------------------------*/

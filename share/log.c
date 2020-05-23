@@ -12,6 +12,11 @@
  * General Public License for more details.
  */
 
+#ifdef NXDK
+#include <hal/debug.h>
+#include <windows.h>
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -42,6 +47,11 @@ void log_printf(const char *fmt, ...)
         vsnprintf(str, len, fmt, ap);
         va_end(ap);
 
+#ifdef NXDK
+debugPrint("%s\n", str);
+//Sleep(100);
+#endif
+
         fputs(str, stderr);
         fflush(stderr);
 
@@ -68,15 +78,23 @@ void log_printf(const char *fmt, ...)
 
 void log_init(const char *name, const char *path)
 {
+#ifdef NXDK
+debugPrint("log_init('%s', '%s')\n", name, path);
+#endif
     if (!log_fp)
     {
         if ((log_fp = fs_open_append(path)))
         {
             /* Printed on first message. */
-
+#if 0
+#error this will crash probably
             sprintf(log_header, "%s - %s %s",
                     date_to_str(time(NULL)),
                     name, VERSION);
+#endif
+#ifdef NXDK
+debugPrint("log_init...\n");
+#endif
         }
         else
         {

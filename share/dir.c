@@ -12,7 +12,15 @@
  * General Public License for more details.
  */
 
+#ifdef NXDK
+#include <hal/debug.h>
+#endif
+
+#ifndef _WIN32
 #include <dirent.h>
+#else
+#include <windows.h>
+#endif
 
 #include <string.h>
 #include <stdlib.h>
@@ -21,16 +29,11 @@
 #include "dir.h"
 #include "common.h"
 
-/*
- * HACK: MinGW provides numerous POSIX extensions to MSVCRT, including
- * dirent.h, so parasti ever so lazily has not bothered to port the
- * code below to FindFirstFile et al.
- */
-
 List dir_list_files(const char *path)
 {
-    DIR *dir;
     List files = NULL;
+#ifndef _WIN32
+    DIR *dir;
 
     if ((dir = opendir(path)))
     {
@@ -40,12 +43,44 @@ List dir_list_files(const char *path)
         {
             if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)
                 continue;
-
+printf("-- '%s'\n", ent->d_name);
             files = list_cons(strdup(ent->d_name), files);
         }
 
         closedir(dir);
     }
+#else
+#ifdef NXDK
+    debugPrint("Asking for files in '%s'\n", path);
+#endif
+
+    HANDLE hFind;
+    WIN32_FIND_DATAA FindFileData;
+
+    char buf[1024];
+    sprintf(buf, "%s\\*", path);
+    hFind = FindFirstFileA(buf, &FindFileData);
+    if (hFind != INVALID_HANDLE_VALUE)
+    {
+        BOOL status = TRUE;
+        while(status != FALSE)
+        {
+            //FIXME: Handle wide strings?
+            files = list_cons(strdup(FindFileData.cFileName), files);
+
+#if 0
+#ifndef NXDK
+            printf("-- '%s'\n", FindFileData.cFileName);
+#else
+            debugPrint("-- '%s'\n", FindFileData.cFileName);
+#endif
+#endif
+
+            status = FindNextFileA(hFind, &FindFileData);
+        }
+        FindClose(hFind);
+    }
+#endif
 
     return files;
 }
@@ -122,6 +157,7 @@ void dir_free(Array items)
 
 int dir_exists(const char *path)
 {
+#ifndef _WIN32
     DIR *dir;
 
     if ((dir = opendir(path)))
@@ -130,4 +166,17 @@ int dir_exists(const char *path)
         return 1;
     }
     return 0;
+#else
+return 1;
+debugPrint("%s:%d\n", __FILE__, __LINE__);
+    printf("Path '%s':", path);
+    debugPrint("Path '%s':", path);
+    DWORD dwAttrib = GetFileAttributesA(path);
+    printf(" 0x%08X\n", path, dwAttrib);
+    debugPrint(" 0x%08X\n", path, dwAttrib);
+debugPrint("%s:%d\n", __FILE__, __LINE__);
+
+    return ((dwAttrib != INVALID_FILE_ATTRIBUTES) &&
+           (dwAttrib & FILE_ATTRIBUTE_DIRECTORY)) ? 1 : 0;
+#endif
 }

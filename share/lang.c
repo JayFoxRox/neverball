@@ -13,6 +13,13 @@
  * General Public License for more details.
  */
 
+#ifdef NXDK
+#include <hal/debug.h>
+#endif
+
+
+#include <assert.h>
+
 #include <string.h>
 #include <locale.h>
 #include <stdlib.h>
@@ -132,16 +139,27 @@ int lang_load(struct lang_desc *desc, const char *path)
         fs_file fp;
 
         memset(desc, 0, sizeof (*desc));
-
+#ifndef NXDK
+printf("lang '%s'\n", path);
+#else
+debugPrint("lang '%s'\n", path);
+#endif
         if ((fp = fs_open_read(path)))
         {
+#ifndef NXDK
+printf("lang loaded '%s'\n", path);
+#else
+debugPrint("lang loaded '%s'\n", path);
+#endif
             char buf[MAXSTR];
 
             SAFECPY(desc->code, base_name_sans(path, ".txt"));
 
             while (fs_gets(buf, sizeof (buf), fp))
             {
+assert(0);
                 strip_newline(buf);
+assert(0);
 
                 if (str_starts_with(buf, "name1 "))
                     SAFECPY(desc->name1, buf + 6);
@@ -153,10 +171,13 @@ int lang_load(struct lang_desc *desc, const char *path)
 
             fs_close(fp);
 
-            if (*desc->name1)
+            if (*desc->name1) {
+                assert(0);
                 return 1;
+            }
         }
     }
+//assert(0);
     return 0;
 }
 
@@ -231,8 +252,10 @@ static int lang_status;
 
 void lang_init(void)
 {
+//assert(0);
     lang_quit();
     lang_load(&curr_lang, lang_path(config_get_s(CONFIG_LANGUAGE)));
+//assert(0);
     gt_init("neverball", curr_lang.code);
     lang_status = 1;
 }

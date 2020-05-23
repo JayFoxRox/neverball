@@ -12,6 +12,13 @@
  * General Public License for more details.
  */
 
+#ifdef NXDK
+#include <hal/debug.h>
+#else
+#define debugPrint(...) 0
+#endif
+#include <assert.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -42,7 +49,11 @@ static List  fs_path;
 
 int fs_init(const char *argv0)
 {
+#ifdef NXDK
+    fs_dir_base = "";
+#else
     fs_dir_base  = strdup(argv0 && *argv0 ? dir_name(argv0) : ".");
+#endif
     fs_dir_write = NULL;
     fs_path      = NULL;
 
@@ -98,15 +109,21 @@ int fs_add_path(const char *path)
 
 int fs_set_write_dir(const char *path)
 {
+debugPrint("%s:%d\n", __FILE__, __LINE__);
     if (dir_exists(path))
     {
+debugPrint("%s:%d\n", __FILE__, __LINE__);
         if (fs_dir_write)
         {
+debugPrint("%s:%d\n", __FILE__, __LINE__);
             free(fs_dir_write);
+debugPrint("%s:%d\n", __FILE__, __LINE__);
             fs_dir_write = NULL;
+debugPrint("%s:%d\n", __FILE__, __LINE__);
         }
-
+debugPrint("%s:%d\n", __FILE__, __LINE__);
         fs_dir_write = strdup(path);
+debugPrint("%s:%d\n", __FILE__, __LINE__);
         return 1;
     }
     return 0;
@@ -195,7 +212,7 @@ void fs_dir_free(Array items)
 }
 
 /*---------------------------------------------------------------------------*/
-
+#include <assert.h>
 static char *real_path(const char *path)
 {
     char *real = NULL;
@@ -204,9 +221,16 @@ static char *real_path(const char *path)
     for (p = fs_path; p; p = p->next)
     {
         real = path_join(p->data, path);
+        path_normalize(real);
 
-        if (file_exists(real))
+        if (file_exists(real)) {
+#ifdef NXDK
+debugPrint("found '%s'\n", real);
+#else
+printf("found '%s'\n", real);
+#endif
             break;
+        }
 
         free(real);
         real = NULL;
@@ -225,9 +249,21 @@ fs_file fs_open_read(const char *path)
     {
         char *real;
 
+#ifdef NXDK
+debugPrint("Path: %s\n", path);
+#endif
         if ((real = real_path(path)))
         {
+#ifdef NXDK
+debugPrint("Trying to open '%s' (read)\n", real);
+#endif
             fh->handle = fopen(real, "rb");
+
+assert(fh->handle
+|| !strcmp(real, "D:\\Neverball\\neverballrc")
+|| !strcmp(real, "D:\\Neverball\\lang.txt")
+);
+
             free(real);
         }
 
@@ -252,7 +288,19 @@ static fs_file fs_open_write_flags(const char *path, int append)
 
             if ((real = path_join(fs_dir_write, path)))
             {
+                path_normalize(real);
+#ifdef NXDK
+debugPrint("Trying to open '%s' (write)\n", real);
+#endif
                 fh->handle = fopen(real, append ? "ab" : "wb");
+
+assert(fh->handle
+|| !strcmp(real, "D:\\Neverball\\neverball.log")
+|| !strcmp(real, "D:\\Neverball\\Replays\\Last.nbr")
+|| !strcmp(real, "E:\\UDATA\\Neverball\\neverball.log")
+|| !strcmp(real, "E:\\UDATA\\Neverball\\Replays\\Last.nbr")
+);
+
                 free(real);
             }
 
@@ -273,6 +321,9 @@ fs_file fs_open_write(const char *path)
 
 fs_file fs_open_append(const char *path)
 {
+#ifdef NXDK
+debugPrint("Trying to open '%s' (append)\n", path);
+#endif
     return fs_open_write_flags(path, 1);
 }
 

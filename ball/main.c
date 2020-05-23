@@ -43,6 +43,12 @@
 #include "st_level.h"
 #include "st_pause.h"
 
+#ifdef NXDK
+#include <hal/debug.h>
+#else
+#define debugPrint(...)
+#endif
+
 const char TITLE[] = "Neverball " VERSION;
 const char ICON[] = "icon/neverball.png";
 
@@ -523,65 +529,70 @@ static void make_dirs_and_migrate(void)
 
     fs_mkdir("Screenshots");
 }
-
+#include <assert.h>
 /*---------------------------------------------------------------------------*/
 
 int main(int argc, char *argv[])
 {
     int t1, t0;
-
+debugPrint("%s:%d\n", __FILE__, __LINE__);
     if (!fs_init(argc > 0 ? argv[0] : NULL))
     {
         fprintf(stderr, "Failure to initialize virtual file system (%s)\n",
                 fs_error());
         return 1;
     }
-
+debugPrint("%s:%d\n", __FILE__, __LINE__);
     opt_parse(argc, argv);
-
+debugPrint("%s:%d\n", __FILE__, __LINE__);
     config_paths(opt_data);
+debugPrint("%s:%d\n", __FILE__, __LINE__);
     log_init("Neverball", "neverball.log");
+debugPrint("%s:%d\n", __FILE__, __LINE__);
     make_dirs_and_migrate();
 
     /* Initialize SDL. */
-
+debugPrint("%s:%d\n", __FILE__, __LINE__);
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_JOYSTICK) == -1)
     {
         log_printf("Failure to initialize SDL (%s)\n", SDL_GetError());
         return 1;
     }
-
+debugPrint("%s:%d\n", __FILE__, __LINE__);
     /* Enable joystick events. */
-
+debugPrint("%s:%d\n", __FILE__, __LINE__);
     joy_init();
 
     /* Intitialize configuration. */
-
+debugPrint("%s:%d\n", __FILE__, __LINE__);
     config_init();
     config_load();
-
+debugPrint("%s:%d\n", __FILE__, __LINE__);
     /* Initialize localization. */
 
     lang_init();
-
+debugPrint("%s:%d\n", __FILE__, __LINE__);
     /* Initialize audio. */
-
+//assert(0);
     audio_init();
     tilt_init();
-
+debugPrint("%s:%d\n", __FILE__, __LINE__);
     /* Initialize video. */
 
-    if (!video_init())
+    if (!video_init()) {
+assert(0);
         return 1;
+}
+debugPrint("%s:%d\n", __FILE__, __LINE__);
 
     /* Material system. */
 
     mtrl_init();
-
+debugPrint("%s:%d\n", __FILE__, __LINE__);
     /* Screen states. */
 
     init_state(&st_null);
-
+//assert(0);
     /* Initialize demo playback or load the level. */
 
     if (opt_replay &&
@@ -623,11 +634,14 @@ int main(int argc, char *argv[])
     /* Run the main game loop. */
 
     t0 = SDL_GetTicks();
-
+//assert(0);
     while (loop())
     {
+//debugPrint("%d > %d?\n", t1, t0);
+//assert(0);
         if ((t1 = SDL_GetTicks()) > t0)
         {
+//assert(0);
             /* Step the game state. */
 
             st_timer(0.001f * (t1 - t0));
@@ -637,7 +651,9 @@ int main(int argc, char *argv[])
             /* Render. */
 
             hmd_step();
+//assert(0);
             st_paint(0.001f * t0);
+//assert(0);
             video_swap();
 
             if (config_get_d(CONFIG_NICE))
@@ -653,7 +669,7 @@ int main(int argc, char *argv[])
     hmd_free();
     joy_quit();
     SDL_Quit();
-
+assert(0);
     return 0;
 }
 

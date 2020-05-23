@@ -12,6 +12,8 @@
  * General Public License for more details.
  */
 
+#include <assert.h>
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -207,18 +209,21 @@ static void draw_enable(GLboolean c, GLboolean u, GLboolean p)
 
 static void draw_rect(int id)
 {
-    glDrawElements(GL_TRIANGLE_STRIP, RECT_ELEM, GL_UNSIGNED_SHORT,
-                   (const GLvoid *) (id * WIDGET_ELEM * sizeof (GLushort)));
+//printf("Tried to draw %d\n", RECT_ELEM);
+ glDrawElements(GL_TRIANGLE_STRIP, RECT_ELEM, GL_UNSIGNED_SHORT,
+                (const GLvoid *) (id * WIDGET_ELEM * sizeof (GLushort)));
 }
 
 static void draw_text(int id)
 {
     glDrawArrays(GL_TRIANGLE_STRIP, id * WIDGET_VERT + RECT_VERT, TEXT_VERT);
+//assert(0);
 }
 
 static void draw_image(int id)
 {
     glDrawArrays(GL_TRIANGLE_STRIP, id * WIDGET_VERT + RECT_VERT, IMAGE_VERT);
+//assert(0);
 }
 
 static void draw_disable(void)
@@ -490,6 +495,8 @@ static void gui_theme_quit(void)
     theme_free(&curr_theme);
 }
 
+#include <assert.h>
+
 static void gui_theme_init(void)
 {
     gui_theme_quit();
@@ -515,11 +522,9 @@ void gui_init(void)
         borders[i] = padding;
 
     /* Initialize font rendering. */
-
     gui_font_init();
 
     /* Initialize GUI theme. */
-
     gui_theme_init();
 
     /* Initialize the VBOs. */
@@ -530,9 +535,11 @@ void gui_init(void)
     glBindBuffer_(GL_ARRAY_BUFFER, vert_vbo);
     glBufferData_(GL_ARRAY_BUFFER, sizeof (vert_buf), vert_buf, GL_STATIC_DRAW);
     glBindBuffer_(GL_ARRAY_BUFFER, 0);
-
+//assert(0);
     glGenBuffers_(1,                      &vert_ebo);
+//assert(0);
     glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, vert_ebo);
+//assert(0);
     glBufferData_(GL_ELEMENT_ARRAY_BUFFER,
                   WIDGET_MAX * WIDGET_ELEM * sizeof (GLushort),
                   NULL, GL_STATIC_DRAW);
@@ -764,6 +771,7 @@ void gui_set_image(int id, const char *file)
     glDeleteTextures(1, &widget[id].image);
 
     widget[id].image = make_image_from_file(file, IF_MIPMAP);
+//assert(widget[id].image != 0);
 }
 
 void gui_set_label(int id, const char *text)
@@ -783,6 +791,7 @@ void gui_set_label(int id, const char *text)
                                             &widget[id].text_w,
                                             &widget[id].text_h,
                                             str, ttf, 0);
+//assert(widget[id].image != 0);
     w = widget[id].text_w;
     h = widget[id].text_h;
 
@@ -910,6 +919,7 @@ int gui_image(int pd, const char *file, int w, int h)
     if ((id = gui_widget(pd, GUI_IMAGE)))
     {
         widget[id].image  = make_image_from_file(file, IF_MIPMAP);
+//assert(widget[id].image != 0);
         widget[id].w      = w;
         widget[id].h      = h;
         widget[id].flags |= GUI_RECT;
@@ -941,6 +951,7 @@ int gui_state(int pd, const char *text, int size, int token, int value)
                                                 &widget[id].text_w,
                                                 &widget[id].text_h,
                                                 text, ttf, 0);
+//assert(widget[id].image != 0);
         widget[id].w     = widget[id].text_w;
         widget[id].h     = widget[id].text_h;
         widget[id].size  = size;
@@ -958,11 +969,12 @@ int gui_label(int pd, const char *text, int size, const GLubyte *c0,
     if ((id = gui_widget(pd, GUI_LABEL)))
     {
         TTF_Font *ttf = fonts[widget[id].font].ttf[size];
-
+assert(ttf != NULL);
         widget[id].image = make_image_from_font(NULL, NULL,
                                                 &widget[id].text_w,
                                                 &widget[id].text_h,
                                                 text, ttf, 0);
+//assert(widget[id].image != 0);
         widget[id].w      = widget[id].text_w;
         widget[id].h      = widget[id].text_h;
         widget[id].size   = size;
@@ -1667,8 +1679,10 @@ static void gui_paint_label(int id)
 {
     /* Short-circuit empty labels. */
 
-    if (widget[id].image == 0)
+    if (widget[id].image == 0) {
+        //assert(0);
         return;
+    }
 
     /* Draw the widget text box, textured using the glyph. */
 

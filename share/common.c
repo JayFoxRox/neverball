@@ -160,6 +160,7 @@ const char *date_to_str(time_t i)
     return str;
 }
 
+#include <assert.h>
 int file_exists(const char *path)
 {
     return (access(path, F_OK) == 0);
@@ -217,7 +218,11 @@ int path_is_abs(const char *path)
 
 char *path_join(const char *head, const char *tail)
 {
+#ifdef _WIN32
+    return *head ? concat_string(head, "\\", tail, NULL) : strdup(tail);
+#else
     return *head ? concat_string(head, "/", tail, NULL) : strdup(tail);
+#endif
 }
 
 const char *path_last_sep(const char *path)
@@ -261,7 +266,11 @@ char *path_normalize(char *path)
     char *sep = path;
 
     while ((sep = (char *) path_next_sep(sep)))
+#ifdef _WIN32
+        *sep++ = '\\';
+#else
         *sep++ = '/';
+#endif
 
     return path;
 }
@@ -310,7 +319,11 @@ const char *dir_name(const char *name)
         if ((sep = (char *) path_last_sep(buff)))
         {
             if (sep == buff)
+#ifdef _WIN32
+                return "\\";
+#else
                 return "/";
+#endif
 
             *sep = '\0';
 
@@ -332,11 +345,14 @@ int rand_between(int low, int high)
 
 #ifdef _WIN32
 
+#ifndef NXDK
 /* MinGW hides this from ANSI C. MinGW-w64 doesn't. */
 _CRTIMP int _putenv(const char *envstring);
+#endif
 
 int set_env_var(const char *name, const char *value)
 {
+#ifndef NXDK
     if (name)
     {
         char str[MAXSTR];
@@ -348,6 +364,7 @@ int set_env_var(const char *name, const char *value)
 
         return (_putenv(str) == 0);
     }
+#endif
     return 0;
 }
 

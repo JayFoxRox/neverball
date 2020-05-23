@@ -218,7 +218,7 @@ static int null_enter(struct state *st, struct state *prev)
 
     return 0;
 }
-
+#include <assert.h>
 static void null_leave(struct state *st, struct state *next, int id)
 {
     mtrl_load_objects();
@@ -228,6 +228,7 @@ static void null_leave(struct state *st, struct state *next, int id)
     geom_init();
     gui_init();
     hud_init();
+//assert(0);
 }
 
 /*---------------------------------------------------------------------------*/

@@ -200,9 +200,10 @@ static int filter_cmd(const union cmd *cmd)
 {
     return (cmd ? cmd->type != CMD_SOUND : 1);
 }
-
+#include <assert.h>
 static int title_enter(struct state *st, struct state *prev)
 {
+//assert(0);
     game_proxy_filter(filter_cmd);
 
     /* Start the title screen music. */
